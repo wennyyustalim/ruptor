@@ -6,13 +6,13 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import * as turf from "@turf/turf";
 
 const MapboxExample = () => {
-  const mapContainerRef = useRef();
-  const mapRef = useRef();
-  const originRef = useRef(null);
-  const planeRef = useRef(null);
-  const planeRouteRef = useRef(null);
-  const droneRef = useRef(null);
-  const droneRouteRef = useRef(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const originRef = useRef<[number, number]>(null);
+  const planeRef = useRef<GeoJSON.FeatureCollection>(null);
+  const planeRouteRef = useRef<GeoJSON.FeatureCollection>(null);
+  const droneRef = useRef<GeoJSON.FeatureCollection>(null);
+  const droneRouteRef = useRef<GeoJSON.FeatureCollection>(null);
   const [disabled, setDisabled] = useState(true);
   const steps = 500;
   let counter = 0;
