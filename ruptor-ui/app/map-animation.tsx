@@ -11,13 +11,17 @@ const MapboxExample = () => {
   const pointRef = useRef(null);
   const originRef = useRef(null);
   const routeRef = useRef(null);
+  const point2Ref = useRef(null);
+  const route2Ref = useRef(null);
   const [disabled, setDisabled] = useState(true);
   const steps = 500;
   let counter = 0;
 
   function handleClick() {
     pointRef.current.features[0].geometry.coordinates = originRef.current;
+    point2Ref.current.features[0].geometry.coordinates = originRef.current;
     mapRef.current.getSource("point").setData(pointRef.current);
+    mapRef.current.getSource("point2").setData(point2Ref.current);
     animate(0);
     setDisabled(true);
   }
@@ -32,19 +36,36 @@ const MapboxExample = () => {
         counter >= steps ? counter : counter + 1
       ];
 
-    if (!start || !end) {
+    const start2 =
+      route2Ref.current.features[0].geometry.coordinates[
+        counter >= steps ? counter - 1 : counter
+      ];
+    const end2 =
+      route2Ref.current.features[0].geometry.coordinates[
+        counter >= steps ? counter : counter + 1
+      ];
+
+    if (!start || !end || !start2 || !end2) {
       setDisabled(false);
       return;
     }
 
     pointRef.current.features[0].geometry.coordinates =
       routeRef.current.features[0].geometry.coordinates[counter];
+    point2Ref.current.features[0].geometry.coordinates =
+      route2Ref.current.features[0].geometry.coordinates[counter];
+
     pointRef.current.features[0].properties.bearing = turf.bearing(
       turf.point(start),
       turf.point(end)
     );
+    point2Ref.current.features[0].properties.bearing = turf.bearing(
+      turf.point(start2),
+      turf.point(end2)
+    );
 
     mapRef.current.getSource("point").setData(pointRef.current);
+    mapRef.current.getSource("point2").setData(point2Ref.current);
 
     if (counter < steps) {
       requestAnimationFrame(animate);
@@ -59,8 +80,8 @@ const MapboxExample = () => {
     mapRef.current = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/dark-v11",
-      center: [-96, 37.8],
-      zoom: 3,
+      center: [30, 50],
+      zoom: 4,
       pitch: 40,
     });
 
@@ -98,6 +119,21 @@ const MapboxExample = () => {
     };
     pointRef.current = point;
 
+    const point2 = {
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          properties: {},
+          geometry: {
+            type: "Point",
+            coordinates: origin,
+          },
+        },
+      ],
+    };
+    point2Ref.current = point2;
+
     const lineDistance = turf.length(route.features[0]);
     const arc = [];
 
@@ -108,6 +144,33 @@ const MapboxExample = () => {
 
     route.features[0].geometry.coordinates = arc;
 
+    const origin2 = [30.5234, 50.4501];
+    const destination2 = [37.6173, 55.7558];
+
+    const route2 = {
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          geometry: {
+            type: "LineString",
+            coordinates: [origin2, destination2],
+          },
+        },
+      ],
+    };
+    route2Ref.current = route2;
+
+    const lineDistance2 = turf.length(route2.features[0]);
+    const arc2 = [];
+
+    for (let i = 0; i < lineDistance2; i += lineDistance2 / steps) {
+      const segment = turf.along(route2.features[0], i);
+      arc2.push(segment.geometry.coordinates);
+    }
+
+    route2.features[0].geometry.coordinates = arc2;
+
     mapRef.current.on("load", () => {
       mapRef.current.addSource("route", {
         type: "geojson",
@@ -117,6 +180,16 @@ const MapboxExample = () => {
       mapRef.current.addSource("point", {
         type: "geojson",
         data: point,
+      });
+
+      mapRef.current.addSource("point2", {
+        type: "geojson",
+        data: point2,
+      });
+
+      mapRef.current.addSource("route2", {
+        type: "geojson",
+        data: route2,
       });
 
       mapRef.current.addLayer({
@@ -140,6 +213,30 @@ const MapboxExample = () => {
           "icon-rotation-alignment": "map",
           "icon-allow-overlap": true,
           "icon-ignore-placement": true,
+        },
+      });
+
+      mapRef.current.addLayer({
+        id: "point2",
+        source: "point2",
+        type: "symbol",
+        layout: {
+          "icon-image": "car",
+          "icon-size": 1.2,
+          "icon-rotate": ["get", "bearing"],
+          "icon-rotation-alignment": "map",
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+        },
+      });
+
+      mapRef.current.addLayer({
+        id: "route2",
+        source: "route2",
+        type: "line",
+        paint: {
+          "line-width": 2,
+          "line-color": "#bf0000",
         },
       });
 
