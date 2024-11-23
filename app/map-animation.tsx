@@ -16,6 +16,8 @@ const MapboxExample = () => {
   const [disabled, setDisabled] = useState(true);
   const steps = 500;
   let counter = 0;
+  const [startCoords, setStartCoords] = useState([37.6173, 55.7558]);
+  const [endCoords, setEndCoords] = useState([30.5234, 50.4501]);
 
   function handleClick() {
     planeRef.current.features[0].geometry.coordinates = originRef.current;
@@ -85,10 +87,9 @@ const MapboxExample = () => {
       pitch: 40,
     });
 
-    const origin = [37.6173, 55.7558];
+    const origin = startCoords;
     originRef.current = origin;
-
-    const destination = [30.5234, 50.4501];
+    const destination = endCoords;
 
     const route = {
       type: "FeatureCollection",
@@ -251,7 +252,7 @@ const MapboxExample = () => {
 
     // Cleanup function
     return () => mapRef.current.remove();
-  }, []);
+  }, [startCoords, endCoords]);
 
   return (
     <div
@@ -276,8 +277,60 @@ const MapboxExample = () => {
           position: "absolute",
           top: "10px",
           left: "10px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "10px",
+          padding: "10px",
+          borderRadius: "5px",
         }}
       >
+        <div>
+          <label style={{ display: "block", marginBottom: "5px" }}>
+            Start coordinates:
+          </label>
+          <input
+            type="text"
+            placeholder="longitude"
+            value={startCoords[0]}
+            onChange={(e) =>
+              setStartCoords([parseFloat(e.target.value), startCoords[1]])
+            }
+            style={{ width: "80px", background: "black" }}
+          />
+          <input
+            type="text"
+            placeholder="latitude"
+            value={startCoords[1]}
+            onChange={(e) =>
+              setStartCoords([startCoords[0], parseFloat(e.target.value)])
+            }
+            style={{ width: "80px", background: "black" }}
+          />
+        </div>
+        <div>
+          <label style={{ display: "block", marginBottom: "5px" }}>
+            End coordinates:
+          </label>
+          <input
+            type="text"
+            placeholder="longitude"
+            value={endCoords[0]}
+            onChange={(e) =>
+              setEndCoords([parseFloat(e.target.value), endCoords[1]])
+            }
+            style={{ width: "80px", background: "black" }}
+          />
+          <input
+            type="text"
+            placeholder="latitude"
+            value={endCoords[1]}
+            onChange={(e) =>
+              setEndCoords([endCoords[0], parseFloat(e.target.value)])
+            }
+            style={{ width: "80px", background: "black" }}
+          />
+        </div>
+
         <button
           disabled={disabled}
           style={{
