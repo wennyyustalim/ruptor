@@ -85,10 +85,10 @@ const MapboxExample = () => {
       pitch: 40,
     });
 
-    const origin = [-122.414, 37.776];
+    const origin = [37.6173, 55.7558];
     originRef.current = origin;
 
-    const destination = [-77.032, 38.913];
+    const destination = [30.5234, 50.4501];
 
     const route = {
       type: "FeatureCollection",
@@ -144,8 +144,11 @@ const MapboxExample = () => {
 
     route.features[0].geometry.coordinates = arc;
 
-    const origin2 = [30.5234, 50.4501];
-    const destination2 = [37.6173, 55.7558];
+    const origin2 = [36.2304, 50.0055];
+    const destination2 = [
+      (origin[0] + destination[0]) / 2,
+      (origin[1] + destination[1]) / 2
+    ];
 
     const route2 = {
       type: "FeatureCollection",
@@ -207,8 +210,8 @@ const MapboxExample = () => {
         source: "point",
         type: "symbol",
         layout: {
-          "icon-image": "airport",
-          "icon-size": 1.5,
+          "icon-image": "rocket",
+          "icon-size": 1.2,
           "icon-rotate": ["get", "bearing"],
           "icon-rotation-alignment": "map",
           "icon-allow-overlap": true,
@@ -221,13 +224,16 @@ const MapboxExample = () => {
         source: "point2",
         type: "symbol",
         layout: {
-          "icon-image": "car",
-          "icon-size": 1.2,
+          "icon-image": "rocket",
+          "icon-size": 1.0,
           "icon-rotate": ["get", "bearing"],
           "icon-rotation-alignment": "map",
           "icon-allow-overlap": true,
           "icon-ignore-placement": true,
         },
+        paint: {
+          "icon-color": "#ff0000"
+        }
       });
 
       mapRef.current.addLayer({
