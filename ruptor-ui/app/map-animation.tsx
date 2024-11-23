@@ -54,7 +54,7 @@ const MapboxExample = () => {
   }
 
   useEffect(() => {
-    mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
+    mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
     mapRef.current = new mapboxgl.Map({
       container: mapContainerRef.current,
@@ -151,20 +151,22 @@ const MapboxExample = () => {
   }, []);
 
   return (
-    <div style={{ 
-      height: "100vh",
-      width: "100%",
-      position: "relative" 
-    }}>
-      <div 
-        ref={mapContainerRef} 
-        style={{ 
-          height: "100%", 
+    <div
+      style={{
+        height: "100vh",
+        width: "100%",
+        position: "relative",
+      }}
+    >
+      <div
+        ref={mapContainerRef}
+        style={{
+          height: "100%",
           width: "100%",
           position: "absolute",
           top: 0,
-          left: 0
-        }} 
+          left: 0,
+        }}
       />
       <div
         style={{
