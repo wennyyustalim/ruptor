@@ -20,8 +20,8 @@ const MapboxExample = () => {
   function handleClick() {
     planeRef.current.features[0].geometry.coordinates = originRef.current;
     droneRef.current.features[0].geometry.coordinates = originRef.current;
-    mapRef.current.getSource("point").setData(planeRef.current);
-    mapRef.current.getSource("point2").setData(droneRef.current);
+    mapRef.current.getSource("plane").setData(planeRef.current);
+    mapRef.current.getSource("drone").setData(droneRef.current);
     animate(0);
     setDisabled(true);
   }
@@ -64,8 +64,8 @@ const MapboxExample = () => {
       turf.point(end2)
     );
 
-    mapRef.current.getSource("point").setData(planeRef.current);
-    mapRef.current.getSource("point2").setData(droneRef.current);
+    mapRef.current.getSource("plane").setData(planeRef.current);
+    mapRef.current.getSource("drone").setData(droneRef.current);
 
     if (counter < steps) {
       requestAnimationFrame(animate);
@@ -104,7 +104,7 @@ const MapboxExample = () => {
     };
     planeRouteRef.current = route;
 
-    const point = {
+    const plane = {
       type: "FeatureCollection",
       features: [
         {
@@ -117,9 +117,9 @@ const MapboxExample = () => {
         },
       ],
     };
-    planeRef.current = point;
+    planeRef.current = plane;
 
-    const point2 = {
+    const drone = {
       type: "FeatureCollection",
       features: [
         {
@@ -132,7 +132,7 @@ const MapboxExample = () => {
         },
       ],
     };
-    droneRef.current = point2;
+    droneRef.current = drone;
 
     const lineDistance = turf.length(route.features[0]);
     const arc = [];
@@ -180,14 +180,14 @@ const MapboxExample = () => {
         data: route,
       });
 
-      mapRef.current.addSource("point", {
+      mapRef.current.addSource("plane", {
         type: "geojson",
-        data: point,
+        data: plane,
       });
 
-      mapRef.current.addSource("point2", {
+      mapRef.current.addSource("drone", {
         type: "geojson",
-        data: point2,
+        data: drone,
       });
 
       mapRef.current.addSource("route2", {
@@ -206,8 +206,8 @@ const MapboxExample = () => {
       });
 
       mapRef.current.addLayer({
-        id: "point",
-        source: "point",
+        id: "plane",
+        source: "plane",
         type: "symbol",
         layout: {
           "icon-image": "rocket",
@@ -220,8 +220,8 @@ const MapboxExample = () => {
       });
 
       mapRef.current.addLayer({
-        id: "point2",
-        source: "point2",
+        id: "drone",
+        source: "drone",
         type: "symbol",
         layout: {
           "icon-image": "rocket",
