@@ -8,40 +8,40 @@ import * as turf from "@turf/turf";
 const MapboxExample = () => {
   const mapContainerRef = useRef();
   const mapRef = useRef();
-  const pointRef = useRef(null);
   const originRef = useRef(null);
-  const routeRef = useRef(null);
-  const point2Ref = useRef(null);
-  const route2Ref = useRef(null);
+  const planeRef = useRef(null);
+  const planeRouteRef = useRef(null);
+  const droneRef = useRef(null);
+  const droneRouteRef = useRef(null);
   const [disabled, setDisabled] = useState(true);
   const steps = 500;
   let counter = 0;
 
   function handleClick() {
-    pointRef.current.features[0].geometry.coordinates = originRef.current;
-    point2Ref.current.features[0].geometry.coordinates = originRef.current;
-    mapRef.current.getSource("point").setData(pointRef.current);
-    mapRef.current.getSource("point2").setData(point2Ref.current);
+    planeRef.current.features[0].geometry.coordinates = originRef.current;
+    droneRef.current.features[0].geometry.coordinates = originRef.current;
+    mapRef.current.getSource("point").setData(planeRef.current);
+    mapRef.current.getSource("point2").setData(droneRef.current);
     animate(0);
     setDisabled(true);
   }
 
   function animate() {
     const start =
-      routeRef.current.features[0].geometry.coordinates[
+      planeRouteRef.current.features[0].geometry.coordinates[
         counter >= steps ? counter - 1 : counter
       ];
     const end =
-      routeRef.current.features[0].geometry.coordinates[
+      planeRouteRef.current.features[0].geometry.coordinates[
         counter >= steps ? counter : counter + 1
       ];
 
     const start2 =
-      route2Ref.current.features[0].geometry.coordinates[
+      droneRouteRef.current.features[0].geometry.coordinates[
         counter >= steps ? counter - 1 : counter
       ];
     const end2 =
-      route2Ref.current.features[0].geometry.coordinates[
+      droneRouteRef.current.features[0].geometry.coordinates[
         counter >= steps ? counter : counter + 1
       ];
 
@@ -50,22 +50,22 @@ const MapboxExample = () => {
       return;
     }
 
-    pointRef.current.features[0].geometry.coordinates =
-      routeRef.current.features[0].geometry.coordinates[counter];
-    point2Ref.current.features[0].geometry.coordinates =
-      route2Ref.current.features[0].geometry.coordinates[counter];
+    planeRef.current.features[0].geometry.coordinates =
+      planeRouteRef.current.features[0].geometry.coordinates[counter];
+    droneRef.current.features[0].geometry.coordinates =
+      droneRouteRef.current.features[0].geometry.coordinates[counter];
 
-    pointRef.current.features[0].properties.bearing = turf.bearing(
+    planeRef.current.features[0].properties.bearing = turf.bearing(
       turf.point(start),
       turf.point(end)
     );
-    point2Ref.current.features[0].properties.bearing = turf.bearing(
+    droneRef.current.features[0].properties.bearing = turf.bearing(
       turf.point(start2),
       turf.point(end2)
     );
 
-    mapRef.current.getSource("point").setData(pointRef.current);
-    mapRef.current.getSource("point2").setData(point2Ref.current);
+    mapRef.current.getSource("point").setData(planeRef.current);
+    mapRef.current.getSource("point2").setData(droneRef.current);
 
     if (counter < steps) {
       requestAnimationFrame(animate);
@@ -102,7 +102,7 @@ const MapboxExample = () => {
         },
       ],
     };
-    routeRef.current = route;
+    planeRouteRef.current = route;
 
     const point = {
       type: "FeatureCollection",
@@ -117,7 +117,7 @@ const MapboxExample = () => {
         },
       ],
     };
-    pointRef.current = point;
+    planeRef.current = point;
 
     const point2 = {
       type: "FeatureCollection",
@@ -132,7 +132,7 @@ const MapboxExample = () => {
         },
       ],
     };
-    point2Ref.current = point2;
+    droneRef.current = point2;
 
     const lineDistance = turf.length(route.features[0]);
     const arc = [];
@@ -147,7 +147,7 @@ const MapboxExample = () => {
     const origin2 = [36.2304, 50.0055];
     const destination2 = [
       (origin[0] + destination[0]) / 2,
-      (origin[1] + destination[1]) / 2
+      (origin[1] + destination[1]) / 2,
     ];
 
     const route2 = {
@@ -162,7 +162,7 @@ const MapboxExample = () => {
         },
       ],
     };
-    route2Ref.current = route2;
+    droneRouteRef.current = route2;
 
     const lineDistance2 = turf.length(route2.features[0]);
     const arc2 = [];
@@ -232,8 +232,8 @@ const MapboxExample = () => {
           "icon-ignore-placement": true,
         },
         paint: {
-          "icon-color": "#ff0000"
-        }
+          "icon-color": "#ff0000",
+        },
       });
 
       mapRef.current.addLayer({
