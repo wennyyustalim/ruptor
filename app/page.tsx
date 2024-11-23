@@ -1,3 +1,4 @@
+import React from "react";
 import MapboxExample from "./map-animation";
 
 export default function Home() {
