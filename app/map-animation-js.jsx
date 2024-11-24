@@ -6,7 +6,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import * as turf from "@turf/turf";
 
 // Speeds in m/s
-const MULTIPLIER = 10;
+const MULTIPLIER = 50;
 const DRONE_SPEED = 45 * MULTIPLIER;
 const PLANE_SPEED = 280 * MULTIPLIER;
 
@@ -200,18 +200,20 @@ const MapboxJs = () => {
           : counterRef.current + 1
       ];
 
-    // Update plane position (without modifying its route)
-    planeRef.current.features[0].geometry.coordinates =
-      planeRouteRef.current.features[0].geometry.coordinates[
-        counterRef.current
-      ];
-    planeRef.current.features[0].properties.bearing = turf.bearing(
-      turf.point(start),
-      turf.point(end)
-    );
-    mapRef.current.getSource("plane").setData(planeRef.current);
+    // Update plane position only if not at the end
+    if (counterRef.current < stepsRef.current) {
+      planeRef.current.features[0].geometry.coordinates =
+        planeRouteRef.current.features[0].geometry.coordinates[
+          counterRef.current
+        ];
+      planeRef.current.features[0].properties.bearing = turf.bearing(
+        turf.point(start),
+        turf.point(end)
+      );
+      mapRef.current.getSource("plane").setData(planeRef.current);
+    }
 
-    // Handle drone trails (keep the existing drone animation code)
+    // Handle drone trails (always continue)
     dronesRef.current.forEach((drone, i) => {
       const droneRoute = droneRoutesRef.current[i];
       const start =
@@ -254,10 +256,8 @@ const MapboxJs = () => {
       }
     });
 
-    if (counterRef.current < stepsRef.current) {
-      requestAnimationFrame(animate);
-    }
-
+    // Always continue the animation
+    requestAnimationFrame(animate);
     counterRef.current = counterRef.current + 1;
   }
 
