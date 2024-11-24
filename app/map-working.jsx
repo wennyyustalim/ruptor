@@ -1172,7 +1172,7 @@ const MapboxJsWorking = () => {
               onClick={handleStart}
               disabled={planeStarted}
             >
-              Launch Plane
+              Launch Kabs
             </button>
 
             <button
