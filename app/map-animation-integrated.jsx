@@ -100,7 +100,7 @@ const MapboxJsIntegration = () => {
     let intervalId;
     if (isTracking) {
       fetchCoordinates();
-      intervalId = setInterval(fetchCoordinates, 200);
+      intervalId = setInterval(fetchCoordinates, 50);
     }
 
     return () => {
