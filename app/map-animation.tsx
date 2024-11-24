@@ -92,7 +92,8 @@ const MapboxExample = () => {
   }
 
   function animateCircling() {
-    const time = Date.now() * 0.001; // Convert to seconds
+    const speedFactor = 0.2; // Slower rotation speed (smaller number = slower)
+    const time = Date.now() * 0.001 * speedFactor; // Apply speed factor to time
     const radius = 0.01; // Radius of the circle in degrees
 
     dronesRef.current.forEach((drone, i) => {
@@ -194,8 +195,8 @@ const MapboxExample = () => {
     mapRef.current = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/dark-v11",
-      center: [30, 50],
-      zoom: 4,
+      center: [36.4, 50.3],
+      zoom: 8.5,
       pitch: 40,
     });
 
