@@ -148,20 +148,8 @@ const MapboxJs = () => {
     setIsStarted(false);
     counterRef.current = 0;
 
-    // Reset plane position and clear trail
+    // Reset plane position but keep the route visible
     planeRef.current.features[0].geometry.coordinates = originRef.current;
-    mapRef.current.getSource("planeRoute").setData({
-      type: "FeatureCollection",
-      features: [
-        {
-          type: "Feature",
-          geometry: {
-            type: "LineString",
-            coordinates: [],
-          },
-        },
-      ],
-    });
     mapRef.current.getSource("plane").setData(planeRef.current);
 
     // Reset drones position and clear trails
@@ -512,77 +500,90 @@ const MapboxJs = () => {
   return (
     <div className="relative h-screen w-full">
       <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
-      <div className="absolute top-2.5 left-2.5 flex flex-col gap-2.5 p-2.5 rounded">
+
+      {/* Logo and Team Name */}
+      <div className="absolute top-2.5 left-2.5 flex items-center gap-2.5 p-2.5 bg-black/50 rounded">
+        <img src="/logo.png" alt="Interruptor Logo" className="h-8 w-8" />
+        <span className="text-white font-bold text-xl">Interruptor</span>
+      </div>
+
+      {/* Controls - moved down to accommodate logo */}
+      <div className="absolute top-20 left-2.5 flex flex-col gap-2.5 p-2.5 bg-black/50 rounded">
         <div>
-          <label className="block mb-1.5">Start coordinates:</label>
-          <input
-            type="number"
-            placeholder="longitude"
-            value={startCoords[0]}
-            onChange={(e) => {
-              const lon = parseFloat(e.target.value);
-              if (!isNaN(lon) && lon >= -180 && lon <= 180) {
-                setStartCoords([lon, startCoords[1]]);
-              }
-            }}
-            min="-180"
-            max="180"
-            step="0.0001"
-            className="w-20 bg-black"
-          />
-          <input
-            type="number"
-            placeholder="latitude"
-            value={startCoords[1]}
-            onChange={(e) => {
-              const lat = parseFloat(e.target.value);
-              if (!isNaN(lat) && lat >= -90 && lat <= 90) {
-                setStartCoords([startCoords[0], lat]);
-              }
-            }}
-            min="-90"
-            max="90"
-            step="0.0001"
-            className="w-20 bg-black"
-          />
+          <label className="block mb-1.5 text-white">Start coordinates:</label>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              placeholder="longitude"
+              value={startCoords[0]}
+              onChange={(e) => {
+                const lon = parseFloat(e.target.value);
+                if (!isNaN(lon) && lon >= -180 && lon <= 180) {
+                  setStartCoords([lon, startCoords[1]]);
+                }
+              }}
+              min="-180"
+              max="180"
+              step="0.0001"
+              className="w-24 bg-black/70 text-white px-2 py-1 rounded"
+            />
+            <input
+              type="number"
+              placeholder="latitude"
+              value={startCoords[1]}
+              onChange={(e) => {
+                const lat = parseFloat(e.target.value);
+                if (!isNaN(lat) && lat >= -90 && lat <= 90) {
+                  setStartCoords([startCoords[0], lat]);
+                }
+              }}
+              min="-90"
+              max="90"
+              step="0.0001"
+              className="w-24 bg-black/70 text-white px-2 py-1 rounded"
+            />
+          </div>
         </div>
+
         <div>
-          <label className="block mb-1.5">End coordinates:</label>
-          <input
-            type="number"
-            placeholder="longitude"
-            value={endCoords[0]}
-            onChange={(e) => {
-              const lon = parseFloat(e.target.value);
-              if (!isNaN(lon) && lon >= -180 && lon <= 180) {
-                setEndCoords([lon, endCoords[1]]);
-              }
-            }}
-            min="-180"
-            max="180"
-            step="0.0001"
-            className="w-20 bg-black"
-          />
-          <input
-            type="number"
-            placeholder="latitude"
-            value={endCoords[1]}
-            onChange={(e) => {
-              const lat = parseFloat(e.target.value);
-              if (!isNaN(lat) && lat >= -90 && lat <= 90) {
-                setEndCoords([endCoords[0], lat]);
-              }
-            }}
-            min="-90"
-            max="90"
-            step="0.0001"
-            className="w-20 bg-black"
-          />
+          <label className="block mb-1.5 text-white">End coordinates:</label>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              placeholder="longitude"
+              value={endCoords[0]}
+              onChange={(e) => {
+                const lon = parseFloat(e.target.value);
+                if (!isNaN(lon) && lon >= -180 && lon <= 180) {
+                  setEndCoords([lon, endCoords[1]]);
+                }
+              }}
+              min="-180"
+              max="180"
+              step="0.0001"
+              className="w-24 bg-black/70 text-white px-2 py-1 rounded"
+            />
+            <input
+              type="number"
+              placeholder="latitude"
+              value={endCoords[1]}
+              onChange={(e) => {
+                const lat = parseFloat(e.target.value);
+                if (!isNaN(lat) && lat >= -90 && lat <= 90) {
+                  setEndCoords([endCoords[0], lat]);
+                }
+              }}
+              min="-90"
+              max="90"
+              step="0.0001"
+              className="w-24 bg-black/70 text-white px-2 py-1 rounded"
+            />
+          </div>
         </div>
 
         <div className="flex gap-2.5">
           <button
-            className="bg-blue-500 text-white px-4 py-2 rounded"
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors"
             onClick={handleStart}
             disabled={isStarted}
           >
@@ -590,7 +591,7 @@ const MapboxJs = () => {
           </button>
 
           <button
-            className="bg-blue-500 text-white px-4 py-2 rounded"
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors"
             onClick={handleReplay}
           >
             Replay
