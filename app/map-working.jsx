@@ -10,6 +10,7 @@ const MULTIPLIER = 5;
 const DRONE_SPEED = 45 * MULTIPLIER;
 const PLANE_SPEED = 280 * MULTIPLIER;
 const REFRESH_RATE = 200;
+const NUM_API_DRONES = 6;
 
 // Add this array near the top of your component, after the constants
 const DRONE_COLORS = [
@@ -51,7 +52,6 @@ const EMPTY_POINT = {
 };
 
 const MapboxJsWorking = () => {
-  const num_drones = 6;
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const originRef = useRef(null);
@@ -62,7 +62,7 @@ const MapboxJsWorking = () => {
   const stepsRef = useRef(0);
   const counterRef = useRef(0);
   const droneHistoriesRef = useRef(
-    Array(num_drones)
+    Array(NUM_API_DRONES)
       .fill()
       .map(() => [])
   );
@@ -76,9 +76,9 @@ const MapboxJsWorking = () => {
   const [droneHits, setDroneHits] = useState(0);
   const [planeStarted, setPlaneStarted] = useState(false);
   // Add new refs for the API-controlled drone
-  const apiDronesRef = useRef(Array(5).fill(null));
+  const apiDronesRef = useRef(Array(NUM_API_DRONES).fill(null));
   const apiDroneRoutesRef = useRef(
-    Array(5)
+    Array(NUM_API_DRONES)
       .fill()
       .map(() => ({
         type: "FeatureCollection",
@@ -99,10 +99,11 @@ const MapboxJsWorking = () => {
   const [apiDronesVisible, setApiDronesVisible] = useState(true);
 
   // Replace the powerPlants array with this:
-  const powerPlants = Array.from({ length: num_drones }, (_, i) => {
+  const powerPlants = Array.from({ length: NUM_API_DRONES }, (_, i) => {
     const radius = 0.18; // approximately 20km in degrees
     // Calculate angle for 120 degrees (2π/3 radians)
-    const angle = Math.PI / 6 + (((2 * Math.PI) / 3) * i) / (num_drones - 1);
+    const angle =
+      Math.PI / 6 + (((2 * Math.PI) / 3) * i) / (NUM_API_DRONES - 1);
     // Kharkiv coordinates: [36.296784, 49.995023]
     return {
       name: `Border Point ${i + 1}`,
@@ -122,7 +123,7 @@ const MapboxJsWorking = () => {
   // Update useEffect to initialize and start tracking API drones immediately
   useEffect(() => {
     // First set initial positions for all API drones
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < NUM_API_DRONES; i++) {
       const powerPlantIndex = i % powerPlants.length;
       const initialPosition = powerPlants[powerPlantIndex].coords;
 
@@ -142,15 +143,15 @@ const MapboxJsWorking = () => {
       );
     }
 
-    // Start tracking immediately (removed setIsApiDroneTracking here)
+    // Start tracking immediately
     startTrackingApiDrones();
-  }, []); // Empty dependency array means this runs once on mount
+  }, []);
 
   // Add new function to handle API drone tracking
   function startTrackingApiDrones() {
     setInterval(() => {
       // Poll position for each API drone
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < NUM_API_DRONES; i++) {
         fetch(`/api/position/${i}`)
           .then((response) => response.json())
           .then((data) => {
@@ -355,7 +356,7 @@ const MapboxJsWorking = () => {
     });
 
     // Launch API drones
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < NUM_API_DRONES; i++) {
       handleIntercept(i);
     }
   }
@@ -510,7 +511,7 @@ const MapboxJsWorking = () => {
     counterRef.current = 0;
 
     // Clear drone histories
-    droneHistoriesRef.current = Array(num_drones)
+    droneHistoriesRef.current = Array(NUM_API_DRONES)
       .fill()
       .map(() => []);
 
@@ -552,7 +553,7 @@ const MapboxJsWorking = () => {
     });
 
     // Reset all API drones
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < NUM_API_DRONES; i++) {
       if (apiDronesRef.current[i]) {
         apiDronesRef.current[i].features[0].geometry.coordinates = [
           36.4 + i * 0.1,
@@ -635,7 +636,7 @@ const MapboxJsWorking = () => {
     setApiDronesVisible(!apiDronesVisible);
 
     // Toggle visibility of all API drone layers
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < NUM_API_DRONES; i++) {
       const visibility = !apiDronesVisible ? "visible" : "none";
       mapRef.current.setLayoutProperty(
         `apiDrone${i}`,
@@ -1008,7 +1009,7 @@ const MapboxJsWorking = () => {
       });
 
       // Initialize API-controlled drones
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < NUM_API_DRONES; i++) {
         // Get the corresponding power plant position (wrap around if needed)
         const powerPlantIndex = i % powerPlants.length;
         const initialPosition = powerPlants[powerPlantIndex].coords;

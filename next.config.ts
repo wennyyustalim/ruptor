@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   async rewrites() {
-    const droneIds = [0, 1, 2, 3, 4];
+    const droneIds = [0, 1, 2, 3, 4, 5];
     return droneIds.flatMap((id) => [
       {
         source: `/api/position/${id}`,
