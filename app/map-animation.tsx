@@ -17,6 +17,7 @@ const MapboxExample = () => {
   const counterRef = useRef(0);
   const [startCoords, setStartCoords] = useState([37.6173, 55.7558]);
   const [endCoords, setEndCoords] = useState([30.5234, 50.4501]);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
 
   // Add power plant locations
   const powerPlants = [
@@ -296,25 +297,44 @@ const MapboxExample = () => {
 
       // Add this new code to show country borders
       mapRef.current.addLayer({
-        'id': 'country-boundaries',
-        'source': {
-          'type': 'vector',
-          'url': 'mapbox://mapbox.country-boundaries-v1'
+        id: "country-boundaries",
+        source: {
+          type: "vector",
+          url: "mapbox://mapbox.country-boundaries-v1",
         },
-        'source-layer': 'country_boundaries',
-        'type': 'line',
-        'paint': {
-          'line-color': '#627BC1',
-          'line-width': 1,
-          'line-opacity': 0.7
-        }
+        "source-layer": "country_boundaries",
+        type: "line",
+        paint: {
+          "line-color": "#627BC1",
+          "line-width": 1,
+          "line-opacity": 0.7,
+        },
+      });
+
+      // Add markers for each power plant
+      powerPlants.forEach((plant) => {
+        const marker = new mapboxgl.Marker({
+          color: "#007cbf", // Match drone route color
+        })
+          .setLngLat(plant.coords)
+          .setPopup(
+            new mapboxgl.Popup({
+              className: "black-popup", // Add custom class
+            }).setHTML(`<div style="color: black;">${plant.name}</div>`)
+          )
+          .addTo(mapRef.current);
+
+        markersRef.current.push(marker);
       });
 
       animate(counterRef.current);
     });
 
     // Cleanup function
-    return () => mapRef.current?.remove();
+    return () => {
+      markersRef.current.forEach((marker) => marker.remove());
+      mapRef.current?.remove();
+    };
   }, [startCoords, endCoords]);
 
   return (
