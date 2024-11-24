@@ -15,18 +15,20 @@ const MapboxExample = () => {
   const droneRoutesRef = useRef<GeoJSON.FeatureCollection[]>([]);
   const steps = 500;
   const counterRef = useRef(0);
-  const [startCoords, setStartCoords] = useState([37.6173, 55.7558]);
-  const [endCoords, setEndCoords] = useState([30.5234, 50.4501]);
+  // Belgorod
+  const [startCoords, setStartCoords] = useState([36.5683, 50.5977]);
+  // Kharkiv
+  const [endCoords, setEndCoords] = useState([36.296784, 49.995023]);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
 
   // Add power plant locations
   const powerPlants = [
-    { name: "Kharkiv", coords: [35.9544, 50.1627] },
-    { name: "Zaporizhzhia", coords: [34.575, 47.5083] },
-    { name: "South Ukraine", coords: [31.2333, 47.8] },
-    { name: "Rivne", coords: [25.875, 51.325] },
-    { name: "Khmelnytskyi", coords: [26.6333, 50.3] },
-    { name: "Burshtyn", coords: [24.6333, 49.25] },
+    { name: "Border Point 1", coords: [36.15, 50.15] },
+    { name: "Border Point 2", coords: [36.25, 50.15] },
+    { name: "Border Point 3", coords: [36.35, 50.15] },
+    { name: "Border Point 4", coords: [36.45, 50.15] },
+    { name: "Border Point 5", coords: [36.55, 50.15] },
+    { name: "Border Point 6", coords: [36.65, 50.15] },
   ];
 
   function handleReplay() {
