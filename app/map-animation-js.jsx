@@ -38,6 +38,8 @@ const MapboxJs = () => {
     { name: "Border Point 6", coords: [36.65, 50.151] },
   ];
 
+  mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+
   function handleStart() {
     setIsStarted(true);
     if (circleAnimationRef.current) {
@@ -329,8 +331,6 @@ const MapboxJs = () => {
   }
 
   useEffect(() => {
-    mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-
     mapRef.current = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/dark-v11",
