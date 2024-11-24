@@ -26,6 +26,7 @@ const MapboxJs = () => {
   const [endCoords, setEndCoords] = useState([36.296784, 49.995023]);
   const [isStarted, setIsStarted] = useState(false);
   const circleAnimationRef = useRef(null);
+  const [droneHits, setDroneHits] = useState(0);
 
   // Add power plant locations
   const powerPlants = [
@@ -163,6 +164,7 @@ const MapboxJs = () => {
 
     // Reset drones position and clear trails
     dronesRef.current.forEach((drone, i) => {
+      // Reset drones to their fixed positions instead of circling
       drone.features[0].geometry.coordinates = powerPlants[i].coords;
       mapRef.current.getSource(`droneRoute${i}`).setData({
         type: "FeatureCollection",
@@ -177,10 +179,21 @@ const MapboxJs = () => {
         ],
       });
       mapRef.current.getSource(`drone${i}`).setData(drone);
+
+      // Update the radius position to match the fixed position
+      mapRef.current.getSource(`droneRadius${i}`).setData({
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: powerPlants[i].coords,
+        },
+      });
     });
 
-    // Start circling animation instead of main animation
-    animateCircling();
+    setDroneHits(0);
+    dronesRef.current.forEach((drone) => {
+      drone.features[0].properties.hasHit = false;
+    });
   }
 
   function animate() {
@@ -292,6 +305,21 @@ const MapboxJs = () => {
             coordinates: drone.features[0].geometry.coordinates,
           },
         });
+
+        // Add collision detection
+        const dronePosition = drone.features[0].geometry.coordinates;
+        const planePosition = planeRef.current.features[0].geometry.coordinates;
+        const distance = turf.distance(
+          turf.point(dronePosition),
+          turf.point(planePosition),
+          { units: "kilometers" }
+        );
+
+        // Check if drone is within 0.1km of plane and hasn't already been counted
+        if (distance < 0.1 && !drone.features[0].properties.hasHit) {
+          drone.features[0].properties.hasHit = true;
+          setDroneHits((prev) => prev + 1);
+        }
       }
     });
 
@@ -607,6 +635,13 @@ const MapboxJs = () => {
       <div className="absolute top-2.5 left-2.5 flex items-center gap-2.5 p-2.5 bg-black/50 rounded">
         <img src="/logo.png" alt="Interruptor Logo" className="h-8 w-8" />
         <span className="text-white font-bold text-xl">Interruptor</span>
+      </div>
+
+      {/* Add hits counter */}
+      <div className="absolute top-2.5 right-2.5 p-2.5 bg-black/50 rounded">
+        <span className="text-white font-bold">
+          Successful Intercepts: {droneHits}
+        </span>
       </div>
 
       {/* Controls - moved down to accommodate logo */}
