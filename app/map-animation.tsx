@@ -40,10 +40,34 @@ const MapboxExample = () => {
 
   function handleStart() {
     setIsStarted(true);
-    // Cancel the circling animation
     if (circleAnimationRef.current) {
       cancelAnimationFrame(circleAnimationRef.current);
     }
+
+    // Show the complete plane route immediately
+    mapRef.current.setLayoutProperty("planeRoute", "visibility", "visible");
+    mapRef.current.getSource("planeRoute").setData(planeRouteRef.current);
+
+    // Reset drone routes to empty initially
+    powerPlants.forEach((_, i) => {
+      mapRef.current.setLayoutProperty(
+        `droneRoute${i}`,
+        "visibility",
+        "visible"
+      );
+      mapRef.current.getSource(`droneRoute${i}`).setData({
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            geometry: {
+              type: "LineString",
+              coordinates: [],
+            },
+          },
+        ],
+      });
+    });
 
     // Update the starting points of drone routes to their current positions
     dronesRef.current.forEach((drone, i) => {
@@ -119,12 +143,41 @@ const MapboxExample = () => {
   function handleReplay() {
     setIsStarted(false);
     counterRef.current = 0;
+
+    // Reset plane position and clear trail
     planeRef.current.features[0].geometry.coordinates = originRef.current;
-    dronesRef.current.forEach((drone, i) => {
-      drone.features[0].geometry.coordinates = powerPlants[i].coords;
-      mapRef.current.getSource(`drone${i}`).setData(drone);
+    mapRef.current.getSource("planeRoute").setData({
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          geometry: {
+            type: "LineString",
+            coordinates: [],
+          },
+        },
+      ],
     });
     mapRef.current.getSource("plane").setData(planeRef.current);
+
+    // Reset drones position and clear trails
+    dronesRef.current.forEach((drone, i) => {
+      drone.features[0].geometry.coordinates = powerPlants[i].coords;
+      mapRef.current.getSource(`droneRoute${i}`).setData({
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            geometry: {
+              type: "LineString",
+              coordinates: [],
+            },
+          },
+        ],
+      });
+      mapRef.current.getSource(`drone${i}`).setData(drone);
+    });
+
     // Start circling animation instead of main animation
     animateCircling();
   }
@@ -143,19 +196,18 @@ const MapboxExample = () => {
           : counterRef.current + 1
       ];
 
+    // Update plane position (without modifying its route)
     planeRef.current.features[0].geometry.coordinates =
       planeRouteRef.current.features[0].geometry.coordinates[
         counterRef.current
       ];
-
     planeRef.current.features[0].properties.bearing = turf.bearing(
       turf.point(start),
       turf.point(end)
     );
-
     mapRef.current.getSource("plane").setData(planeRef.current);
 
-    // Handle multiple drones
+    // Handle drone trails (keep the existing drone animation code)
     dronesRef.current.forEach((drone, i) => {
       const droneRoute = droneRoutesRef.current[i];
       const start =
@@ -178,6 +230,22 @@ const MapboxExample = () => {
           turf.point(start),
           turf.point(end)
         );
+
+        // Update drone trail
+        const droneTrail = {
+          type: "Feature",
+          geometry: {
+            type: "LineString",
+            coordinates: droneRoute.features[0].geometry.coordinates.slice(
+              0,
+              counterRef.current + 1
+            ),
+          },
+        };
+        mapRef.current.getSource(`droneRoute${i}`).setData({
+          type: "FeatureCollection",
+          features: [droneTrail],
+        });
         mapRef.current.getSource(`drone${i}`).setData(drone);
       }
     });
@@ -282,11 +350,14 @@ const MapboxExample = () => {
         },
       });
 
-      // Add plane route layer
+      // Add plane route layer with initial visibility set to none
       mapRef.current.addLayer({
         id: "planeRoute",
         source: "planeRoute",
         type: "line",
+        layout: {
+          visibility: "none", // Hide initially
+        },
         paint: {
           "line-width": 2,
           "line-color": "#ff0000",
@@ -388,13 +459,16 @@ const MapboxExample = () => {
           },
         });
 
+        // Update drone route layers with initial visibility set to none
         mapRef.current.addLayer({
           id: `droneRoute${i}`,
           source: `droneRoute${i}`,
           type: "line",
+          layout: {
+            visibility: "none", // Hide initially
+          },
           paint: {
             "line-width": 2,
-            // Blue
             "line-color": "#007cbf",
           },
         });
