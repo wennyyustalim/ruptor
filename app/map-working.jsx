@@ -10,6 +10,18 @@ const MULTIPLIER = 50;
 const DRONE_SPEED = 45 * MULTIPLIER;
 const PLANE_SPEED = 280 * MULTIPLIER;
 
+// Add this array near the top of your component, after the constants
+const DRONE_COLORS = [
+  "#FF0000", // Red
+  "#00FF00", // Green
+  "#0000FF", // Blue
+  "#FFFF00", // Yellow
+  "#FF00FF", // Magenta
+  "#00FFFF", // Cyan
+  "#FFA500", // Orange
+  "#800080", // Purple
+];
+
 const MapboxJsWorking = () => {
   const num_drones = 4;
   const mapContainerRef = useRef(null);
@@ -39,9 +51,24 @@ const MapboxJsWorking = () => {
   const [planeStarted, setPlaneStarted] = useState(false);
   const [dronesLaunched, setDronesLaunched] = useState(false);
   // Add new refs for the API-controlled drone
-  const apiDroneRef = useRef(null);
-  const apiDroneRouteRef = useRef(null);
-  const apiDroneHistoryRef = useRef([]);
+  const apiDronesRef = useRef(Array(5).fill(null));
+  const apiDroneRoutesRef = useRef(
+    Array(5)
+      .fill()
+      .map(() => ({
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            geometry: {
+              type: "LineString",
+              coordinates: [],
+            },
+          },
+        ],
+      }))
+  );
+  const apiDroneHistoriesRef = useRef(Array(5).fill([]));
   const [isApiDroneTracking, setIsApiDroneTracking] = useState(false);
   // Add new state for controlling the interval
   const [fetchInterval, setFetchInterval] = useState(null);
@@ -326,30 +353,40 @@ const MapboxJsWorking = () => {
       drone.features[0].properties.hasHit = false;
     });
 
-    // Reset API drone
-    if (apiDroneRef.current) {
-      apiDroneRef.current.features[0].geometry.coordinates = [36.4, 50.3]; // Initial position
-      mapRef.current.getSource("apiDrone").setData(apiDroneRef.current);
-      apiDroneHistoryRef.current = [];
-      mapRef.current.getSource("apiDroneRoute").setData({
-        type: "FeatureCollection",
-        features: [
-          {
-            type: "Feature",
-            geometry: {
-              type: "LineString",
-              coordinates: [],
+    // Reset all API drones
+    for (let i = 0; i < 5; i++) {
+      if (apiDronesRef.current[i]) {
+        apiDronesRef.current[i].features[0].geometry.coordinates = [
+          36.4 + i * 0.1,
+          50.3,
+        ];
+        mapRef.current
+          .getSource(`apiDrone${i}`)
+          .setData(apiDronesRef.current[i]);
+
+        // Clear the route array
+        apiDroneRoutesRef.current[i] = [];
+
+        mapRef.current.getSource(`apiDroneRoute${i}`).setData({
+          type: "FeatureCollection",
+          features: [
+            {
+              type: "Feature",
+              geometry: {
+                type: "LineString",
+                coordinates: [],
+              },
             },
-          },
-        ],
-      });
+          ],
+        });
+      }
     }
   }
 
-  // Add handleIntercept function
-  async function handleIntercept() {
+  // Update handleIntercept to take a droneId
+  async function handleIntercept(droneId) {
     try {
-      const response = await fetch("/api/waypoint/0", {
+      const response = await fetch(`/api/waypoint/${droneId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -364,9 +401,9 @@ const MapboxJsWorking = () => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
-      console.log("Waypoint set:", data);
+      console.log(`Waypoint set for drone ${droneId}:`, data);
     } catch (error) {
-      console.error("Error setting waypoint:", error);
+      console.error(`Error setting waypoint for drone ${droneId}:`, error);
     }
   }
 
@@ -623,7 +660,7 @@ const MapboxJsWorking = () => {
           },
         });
 
-        // Update drone route layers with initial visibility set to none
+        // Update drone route layers with initial visibility set to none and unique colors
         mapRef.current.addLayer({
           id: `droneRoute${i}`,
           source: `droneRoute${i}`,
@@ -633,7 +670,7 @@ const MapboxJsWorking = () => {
           },
           paint: {
             "line-width": 2,
-            "line-color": "#007cbf",
+            "line-color": DRONE_COLORS[i % DRONE_COLORS.length], // Use color from array
           },
         });
       });
@@ -704,74 +741,78 @@ const MapboxJsWorking = () => {
         },
       });
 
-      // Initialize API-controlled drone
-      const apiDrone = {
-        type: "FeatureCollection",
-        features: [
-          {
-            type: "Feature",
-            properties: {},
-            geometry: {
-              type: "Point",
-              coordinates: [36.4, 50.3], // Initial position
+      // Initialize API-controlled drones
+      for (let i = 0; i < 5; i++) {
+        // Create API drone with different initial positions
+        const apiDrone = {
+          type: "FeatureCollection",
+          features: [
+            {
+              type: "Feature",
+              properties: {},
+              geometry: {
+                type: "Point",
+                coordinates: [36.4 + i * 0.1, 50.3], // Spread out initial positions
+              },
             },
-          },
-        ],
-      };
-      apiDroneRef.current = apiDrone;
+          ],
+        };
+        apiDronesRef.current[i] = apiDrone;
 
-      // Create API drone route
-      const apiDroneRoute = {
-        type: "FeatureCollection",
-        features: [
-          {
-            type: "Feature",
-            geometry: {
-              type: "LineString",
-              coordinates: [],
+        // Create API drone route
+        const apiDroneRoute = {
+          type: "FeatureCollection",
+          features: [
+            {
+              type: "Feature",
+              geometry: {
+                type: "LineString",
+                coordinates: [],
+              },
             },
+          ],
+        };
+        apiDroneRoutesRef.current[i] = apiDroneRoute;
+
+        // Add API drone sources and layers
+        mapRef.current.addSource(`apiDrone${i}`, {
+          type: "geojson",
+          data: apiDrone,
+        });
+
+        mapRef.current.addSource(`apiDroneRoute${i}`, {
+          type: "geojson",
+          data: apiDroneRoute,
+        });
+
+        mapRef.current.addLayer({
+          id: `apiDrone${i}`,
+          source: `apiDrone${i}`,
+          type: "symbol",
+          layout: {
+            "icon-image": "rocket",
+            "icon-size": 1.0,
+            "icon-rotate": ["get", "bearing"],
+            "icon-rotation-alignment": "map",
+            "icon-allow-overlap": true,
+            "icon-ignore-placement": true,
           },
-        ],
-      };
-      apiDroneRouteRef.current = apiDroneRoute;
+          paint: {
+            "icon-color": "#ffff00", // Yellow to distinguish from other drones
+          },
+        });
 
-      // Add API drone sources and layers
-      mapRef.current.addSource("apiDrone", {
-        type: "geojson",
-        data: apiDrone,
-      });
-
-      mapRef.current.addSource("apiDroneRoute", {
-        type: "geojson",
-        data: apiDroneRoute,
-      });
-
-      mapRef.current.addLayer({
-        id: "apiDrone",
-        source: "apiDrone",
-        type: "symbol",
-        layout: {
-          "icon-image": "rocket",
-          "icon-size": 1.0,
-          "icon-rotate": ["get", "bearing"],
-          "icon-rotation-alignment": "map",
-          "icon-allow-overlap": true,
-          "icon-ignore-placement": true,
-        },
-        paint: {
-          "icon-color": "#ffff00", // Yellow to distinguish from other drones
-        },
-      });
-
-      mapRef.current.addLayer({
-        id: "apiDroneRoute",
-        source: "apiDroneRoute",
-        type: "line",
-        paint: {
-          "line-width": 2,
-          "line-color": "#ffff00",
-        },
-      });
+        mapRef.current.addLayer({
+          id: `apiDroneRoute${i}`,
+          source: `apiDroneRoute${i}`,
+          type: "line",
+          paint: {
+            "line-width": 2,
+            "line-color": DRONE_COLORS[i], // Use a unique color for each drone
+            "line-opacity": 0.7,
+          },
+        });
+      }
 
       // Start the combined animation immediately
       animateCombined();
@@ -784,62 +825,64 @@ const MapboxJsWorking = () => {
     };
   }, [startCoords, endCoords]);
 
-  // Add new useEffect to handle API polling
+  // Update useEffect for API polling to handle multiple drones
   useEffect(() => {
     if (isApiDroneTracking) {
-      // Start polling every second
       const interval = setInterval(() => {
-        fetch("/api/position/0")
-          .then((response) => response.json())
-          .then((data) => {
-            const newCoords = [data.longitude, data.latitude];
+        // Poll position for each API drone
+        for (let i = 0; i < 5; i++) {
+          fetch(`/api/position/${i}`)
+            .then((response) => response.json())
+            .then((data) => {
+              const newCoords = [data.longitude, data.latitude];
 
-            if (apiDroneRef.current) {
-              // Update drone position
-              apiDroneRef.current.features[0].geometry.coordinates = newCoords;
+              if (apiDronesRef.current[i]) {
+                // Update drone position
+                apiDronesRef.current[i].features[0].geometry.coordinates =
+                  newCoords;
 
-              // Calculate bearing if we have previous coordinates
-              if (apiDroneHistoryRef.current.length > 0) {
-                const prevCoords =
-                  apiDroneHistoryRef.current[
-                    apiDroneHistoryRef.current.length - 1
-                  ];
-                apiDroneRef.current.features[0].properties.bearing =
-                  turf.bearing(turf.point(prevCoords), turf.point(newCoords));
+                // Get current coordinates array
+                const coordinates =
+                  apiDroneRoutesRef.current[i].features[0].geometry.coordinates;
+
+                // Add new coordinates to the array
+                coordinates.push(newCoords);
+
+                // Limit the trail length
+                if (coordinates.length > 1000) {
+                  coordinates.shift();
+                }
+
+                // Calculate bearing if we have previous coordinates
+                if (coordinates.length > 1) {
+                  const prevCoords = coordinates[coordinates.length - 2];
+                  apiDronesRef.current[i].features[0].properties.bearing =
+                    turf.bearing(turf.point(prevCoords), turf.point(newCoords));
+                }
+
+                // Update both the drone and its route on the map
+                mapRef.current
+                  .getSource(`apiDrone${i}`)
+                  .setData(apiDronesRef.current[i]);
+
+                mapRef.current
+                  .getSource(`apiDroneRoute${i}`)
+                  .setData(apiDroneRoutesRef.current[i]);
               }
-
-              mapRef.current.getSource("apiDrone").setData(apiDroneRef.current);
-
-              // Update history trail
-              apiDroneHistoryRef.current.push(newCoords);
-              if (apiDroneHistoryRef.current.length > 1000) {
-                apiDroneHistoryRef.current.shift();
-              }
-
-              // Update the route to show history
-              apiDroneRouteRef.current.features[0].geometry.coordinates =
-                apiDroneHistoryRef.current;
-              mapRef.current
-                .getSource("apiDroneRoute")
-                .setData(apiDroneRouteRef.current);
-            }
-          })
-          .catch((error) =>
-            console.error("Error fetching drone position:", error)
-          );
-      }, 1000); // Poll every 1000ms (1 second)
+            })
+            .catch((error) =>
+              console.error(`Error fetching position for drone ${i}:`, error)
+            );
+        }
+      }, 1000);
 
       setFetchInterval(interval);
 
-      // Cleanup function
       return () => {
         if (interval) {
           clearInterval(interval);
         }
       };
-    } else if (fetchInterval) {
-      clearInterval(fetchInterval);
-      setFetchInterval(null);
     }
   }, [isApiDroneTracking]);
 
@@ -951,13 +994,16 @@ const MapboxJsWorking = () => {
               Replay
             </button>
 
-            {/* Add new Intercept button */}
-            <button
-              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition-colors"
-              onClick={handleIntercept}
-            >
-              Intercept
-            </button>
+            {/* Add separate intercept buttons for each API drone */}
+            {Array.from({ length: 5 }).map((_, i) => (
+              <button
+                key={i}
+                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition-colors"
+                onClick={() => handleIntercept(i)}
+              >
+                Intercept {i}
+              </button>
+            ))}
           </div>
         </div>
       </div>

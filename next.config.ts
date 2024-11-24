@@ -2,17 +2,17 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   async rewrites() {
-    return [
+    const droneIds = [0, 1, 2, 3, 4];
+    return droneIds.flatMap((id) => [
       {
-        source: "/api/position/0",
-        destination: "http://192.168.0.74:8000/position/0",
-        // destination: "http://127.0.0.1:8000/position",
+        source: `/api/position/${id}`,
+        destination: `http://192.168.0.74:8000/position/${id}`,
       },
       {
-        source: "/api/waypoint/0",
-        destination: "http://192.168.0.74:8000/waypoint/0",
+        source: `/api/waypoint/${id}`,
+        destination: `http://192.168.0.74:8000/waypoint/${id}`,
       },
-    ];
+    ]);
   },
 };
 
