@@ -38,7 +38,7 @@ const EMPTY_POINT = {
 };
 
 const MapboxJsWorking = () => {
-  const num_drones = 4;
+  const num_drones = 6;
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const originRef = useRef(null);
@@ -66,7 +66,7 @@ const MapboxJsWorking = () => {
 
   // Replace the powerPlants array with this:
   const powerPlants = Array.from({ length: num_drones }, (_, i) => {
-    const radius = 0.18; // approximately 20km in degrees (doubled from 0.09)
+    const radius = 0.18; // approximately 20km in degrees
     // Calculate angle for 120 degrees (2π/3 radians)
     const angle = Math.PI / 6 + ((2 * Math.PI) / 3) * i / (num_drones - 1);
     // Kharkiv coordinates: [36.296784, 49.995023]
