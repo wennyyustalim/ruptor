@@ -62,6 +62,7 @@ const MapboxJsWorking = () => {
   const [planeStarted, setPlaneStarted] = useState(false);
   const [dronesLaunched, setDronesLaunched] = useState(false);
   const [clickedPoint, setClickedPoint] = useState(null);
+  const [clickedPosition, setClickedPosition] = useState(null);
 
   // Replace the powerPlants array with this:
   const powerPlants = Array.from({ length: num_drones }, (_, i) => {
@@ -85,7 +86,7 @@ const MapboxJsWorking = () => {
   mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
   function handleStart() {
-    const origin = startCoords;
+    const origin = clickedPosition || startCoords;
     const destination = endCoords;
     originRef.current = origin;
 
@@ -404,6 +405,10 @@ const MapboxJsWorking = () => {
     dronesRef.current.forEach((drone) => {
       drone.features[0].properties.hasHit = false;
     });
+    
+    // Reset clicked position
+    setClickedPosition(null);
+    mapRef.current.setLayoutProperty('clicked-point', 'visibility', 'none');
   }
 
   useEffect(() => {
@@ -795,6 +800,9 @@ const MapboxJsWorking = () => {
       // Add click event listener
       mapRef.current.on('click', (e) => {
         console.log('Map clicked:', e.lngLat);
+        
+        // Update clicked position state
+        setClickedPosition([e.lngLat.lng, e.lngLat.lat]);
         
         // Show the layer if it's hidden
         mapRef.current.setLayoutProperty('clicked-point', 'visibility', 'visible');
