@@ -9,9 +9,9 @@ const MapboxJsIntegration = () => {
   const mapRef = useRef();
   const pointRef = useRef(null);
   const originRef = useRef(null);
-  const routeRef = useRef(null);
   const bombRef = useRef(null);
   const bombTrailRef = useRef(null);
+  const animationStartedRef = useRef(false);
   const [disabled, setDisabled] = useState(true);
   const [coordinates, setCoordinates] = useState([]);
   const [isTracking, setIsTracking] = useState(false);
@@ -19,8 +19,6 @@ const MapboxJsIntegration = () => {
   const bombStart = [36.5683, 50.5977];
   // Kharkiv
   const bombEnd = [36.296784, 49.995023];
-  const [bombPosition, setBombPosition] = useState(bombStart);
-  const [animationStarted, setAnimationStarted] = useState(false);
 
   mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
@@ -32,8 +30,8 @@ const MapboxJsIntegration = () => {
 
   function handleStartTracking() {
     setIsTracking(true);
-    if (!animationStarted) {
-      setAnimationStarted(true);
+    if (!animationStartedRef.current) {
+      animationStartedRef.current = true;
       animateBomb();
     }
   }
@@ -91,7 +89,6 @@ const MapboxJsIntegration = () => {
 
       // Update bomb position
       if (mapRef.current && mapRef.current.loaded()) {
-        setBombPosition(newPosition);
         bombRef.current.features[0].geometry.coordinates = newPosition;
         mapRef.current.getSource("bomb").setData(bombRef.current);
 
