@@ -9,10 +9,16 @@ const MapboxJsIntegration = () => {
   const mapRef = useRef();
   const pointRef = useRef(null);
   const originRef = useRef(null);
-  const routeRef = useRef(null);
+  const bombRef = useRef(null);
+  const bombTrailRef = useRef(null);
+  const animationStartedRef = useRef(false);
   const [disabled, setDisabled] = useState(true);
   const [coordinates, setCoordinates] = useState([]);
   const [isTracking, setIsTracking] = useState(false);
+  // Belgorod
+  const bombStart = [36.5683, 50.5977];
+  // Kharkiv
+  const bombEnd = [36.296784, 49.995023];
 
   mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
@@ -24,6 +30,10 @@ const MapboxJsIntegration = () => {
 
   function handleStartTracking() {
     setIsTracking(true);
+    if (!animationStartedRef.current) {
+      animationStartedRef.current = true;
+      animateBomb();
+    }
   }
 
   function handleStopTracking() {
@@ -38,8 +48,8 @@ const MapboxJsIntegration = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          latitude: 69,
-          longitude: 70,
+          latitude: 51.5,
+          longitude: 36.5,
           altitude: 100,
         }),
       });
@@ -53,6 +63,51 @@ const MapboxJsIntegration = () => {
     }
   }
 
+  function animateBomb() {
+    // Reset bomb position and trail when starting animation
+    bombRef.current.features[0].geometry.coordinates = bombStart;
+    bombTrailRef.current.features[0].geometry.coordinates = [bombStart];
+    if (mapRef.current && mapRef.current.loaded()) {
+      mapRef.current.getSource("bomb").setData(bombRef.current);
+      mapRef.current.getSource("bombTrail").setData(bombTrailRef.current);
+    }
+
+    // Increase steps for smoother animation
+    const steps = 500;
+    let currentStep = 0;
+
+    const animate = () => {
+      if (currentStep >= steps) return;
+
+      currentStep++;
+      const progress = currentStep / steps;
+
+      // Calculate new position
+      const newLng = bombStart[0] + (bombEnd[0] - bombStart[0]) * progress;
+      const newLat = bombStart[1] + (bombEnd[1] - bombStart[1]) * progress;
+      const newPosition = [newLng, newLat];
+
+      // Update bomb position
+      if (mapRef.current && mapRef.current.loaded()) {
+        bombRef.current.features[0].geometry.coordinates = newPosition;
+        mapRef.current.getSource("bomb").setData(bombRef.current);
+
+        // Update trail
+        const trailCoords =
+          bombTrailRef.current.features[0].geometry.coordinates;
+        trailCoords.push(newPosition);
+        mapRef.current.getSource("bombTrail").setData(bombTrailRef.current);
+      }
+
+      // Add setTimeout to slow down the animation
+      setTimeout(() => {
+        requestAnimationFrame(animate);
+      }, 50); // 50ms delay between frames
+    };
+
+    animate();
+  }
+
   useEffect(() => {
     const fetchCoordinates = async () => {
       try {
@@ -63,9 +118,22 @@ const MapboxJsIntegration = () => {
           },
         });
         const data = await response.json();
-        console.log("Received coordinates:", data);
         const newCoords = [data.longitude, data.latitude];
-        setCoordinates((prev) => [...prev, newCoords]);
+
+        setCoordinates((prev) => {
+          const updatedCoords = [...prev, newCoords];
+          if (mapRef.current && mapRef.current.loaded()) {
+            mapRef.current.getSource("route").setData({
+              type: "Feature",
+              properties: {},
+              geometry: {
+                type: "LineString",
+                coordinates: updatedCoords,
+              },
+            });
+          }
+          return updatedCoords;
+        });
 
         if (mapRef.current && mapRef.current.loaded()) {
           console.log("Updating point position to:", newCoords);
@@ -84,11 +152,6 @@ const MapboxJsIntegration = () => {
           }
 
           mapRef.current.getSource("point").setData(pointRef.current);
-
-          mapRef.current.easeTo({
-            center: newCoords,
-            duration: 1000,
-          });
         } else {
           console.log("Map or source not ready");
         }
@@ -113,7 +176,7 @@ const MapboxJsIntegration = () => {
       container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/dark-v11",
       center: [36.15, 50.15],
-      zoom: 3,
+      zoom: 5,
       pitch: 40,
     });
 
@@ -139,16 +202,12 @@ const MapboxJsIntegration = () => {
       mapRef.current.addSource("route", {
         type: "geojson",
         data: {
-          type: "FeatureCollection",
-          features: [
-            {
-              type: "Feature",
-              geometry: {
-                type: "LineString",
-                coordinates: [origin, origin],
-              },
-            },
-          ],
+          type: "Feature",
+          properties: {},
+          geometry: {
+            type: "LineString",
+            coordinates: [origin],
+          },
         },
       });
 
@@ -163,7 +222,7 @@ const MapboxJsIntegration = () => {
         type: "line",
         paint: {
           "line-width": 2,
-          "line-color": "#007cbf",
+          "line-color": "#0066FF",
         },
       });
 
@@ -180,30 +239,72 @@ const MapboxJsIntegration = () => {
           "icon-ignore-placement": true,
         },
       });
+
+      // Initialize bomb and trail features
+      bombRef.current = {
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: {},
+            geometry: {
+              type: "Point",
+              coordinates: bombStart,
+            },
+          },
+        ],
+      };
+
+      bombTrailRef.current = {
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: {},
+            geometry: {
+              type: "LineString",
+              coordinates: [bombStart],
+            },
+          },
+        ],
+      };
+
+      // Add bomb source and layer
+      mapRef.current.addSource("bomb", {
+        type: "geojson",
+        data: bombRef.current,
+      });
+
+      mapRef.current.addSource("bombTrail", {
+        type: "geojson",
+        data: bombTrailRef.current,
+      });
+
+      mapRef.current.addLayer({
+        id: "bombTrail",
+        source: "bombTrail",
+        type: "line",
+        paint: {
+          "line-color": "#FF0000",
+          "line-width": 2,
+        },
+      });
+
+      mapRef.current.addLayer({
+        id: "bomb",
+        source: "bomb",
+        type: "symbol",
+        layout: {
+          "icon-image": "rocket",
+          "icon-size": 1.5,
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+        },
+      });
     });
 
     return () => mapRef.current.remove();
   }, []);
-
-  useEffect(() => {
-    if (!mapRef.current || !mapRef.current.loaded() || coordinates.length < 2)
-      return;
-
-    const route = {
-      type: "FeatureCollection",
-      features: [
-        {
-          type: "Feature",
-          geometry: {
-            type: "LineString",
-            coordinates: coordinates,
-          },
-        },
-      ],
-    };
-    routeRef.current = route;
-    mapRef.current.getSource("route").setData(route);
-  }, [coordinates]);
 
   return (
     <div className="relative h-screen w-full">
