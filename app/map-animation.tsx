@@ -202,8 +202,12 @@ const MapboxExample = () => {
 
       // Initialize multiple drones and their routes
       powerPlants.forEach((plant, i) => {
-        // Change destination2 to be the final plane destination instead of midpoint
-        const destination2 = destination; // Now drones will go to plane's destination
+        // Calculate interception point - spread drones along the plane's route
+        const interceptPoint = Math.floor(
+          (steps * (i + 1)) / (powerPlants.length + 1)
+        );
+        const destination2 =
+          planeRoute.features[0].geometry.coordinates[interceptPoint];
 
         // Create drone
         const drone = {
@@ -235,16 +239,24 @@ const MapboxExample = () => {
           ],
         };
 
-        // Modify arc points calculation to create exactly 'steps' number of points
+        // Modify arc points calculation to create fewer points for faster drone movement
         const arc = [];
         const lineDistance = turf.length(droneRoute.features[0]);
-        for (let j = 0; j <= steps; j++) {
+        // Use fewer steps for drones to make them arrive earlier
+        const droneSteps = interceptPoint;
+        for (let j = 0; j <= droneSteps; j++) {
           const segment = turf.along(
             droneRoute.features[0],
-            (lineDistance * j) / steps
+            (lineDistance * j) / droneSteps
           );
           arc.push(segment.geometry.coordinates);
         }
+
+        // Pad the remaining points with the final coordinate to keep drone stationary
+        while (arc.length <= steps) {
+          arc.push(destination2);
+        }
+
         droneRoute.features[0].geometry.coordinates = arc;
         droneRoutesRef.current[i] = droneRoute;
       });
