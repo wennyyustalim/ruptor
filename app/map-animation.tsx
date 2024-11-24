@@ -5,6 +5,11 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import * as turf from "@turf/turf";
 
+// Speeds in m/s
+const MULTIPLIER = 5;
+const DRONE_SPEED = 100 * MULTIPLIER;
+const PLANE_SPEED = 280 * MULTIPLIER;
+
 const MapboxExample = () => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -13,13 +18,15 @@ const MapboxExample = () => {
   const planeRouteRef = useRef<GeoJSON.FeatureCollection>(null);
   const dronesRef = useRef<GeoJSON.FeatureCollection[]>([]);
   const droneRoutesRef = useRef<GeoJSON.FeatureCollection[]>([]);
-  const steps = 500;
+  const stepsRef = useRef(0);
   const counterRef = useRef(0);
   // Belgorod
   const [startCoords, setStartCoords] = useState([36.5683, 50.5977]);
   // Kharkiv
   const [endCoords, setEndCoords] = useState([36.296784, 49.995023]);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const [isStarted, setIsStarted] = useState(false);
+  const circleAnimationRef = useRef<number>();
 
   // Add power plant locations
   const powerPlants = [
@@ -31,7 +38,83 @@ const MapboxExample = () => {
     { name: "Border Point 6", coords: [36.65, 50.15] },
   ];
 
+  function handleStart() {
+    setIsStarted(true);
+    // Cancel the circling animation
+    if (circleAnimationRef.current) {
+      cancelAnimationFrame(circleAnimationRef.current);
+    }
+    
+    // Update the starting points of drone routes to their current positions
+    dronesRef.current.forEach((drone, i) => {
+      const currentPosition = drone.features[0].geometry.coordinates;
+      const droneRoute = droneRoutesRef.current[i];
+      const destination = droneRoute.features[0].geometry.coordinates[droneRoute.features[0].geometry.coordinates.length - 1];
+      
+      // Create new route from current position
+      const droneDistance = turf.distance(
+        turf.point(currentPosition), 
+        turf.point(destination), 
+        {units: 'kilometers'}
+      ) * 1000; // Convert to meters
+      const droneTime = droneDistance / DRONE_SPEED;
+      const droneSteps = Math.ceil(droneTime * 60); // 60 fps animation
+
+      const arc = [];
+      for (let j = 0; j <= droneSteps; j++) {
+        const segment = turf.along(
+          {
+            type: "Feature",
+            geometry: {
+              type: "LineString",
+              coordinates: [currentPosition, destination],
+            },
+          },
+          (droneDistance * j) / droneSteps,
+          {units: 'meters'}
+        );
+        arc.push(segment.geometry.coordinates);
+      }
+
+      // Pad the remaining points with the final coordinate
+      while (arc.length <= stepsRef.current) {
+        arc.push(destination);
+      }
+
+      droneRoute.features[0].geometry.coordinates = arc;
+      mapRef.current.getSource(`droneRoute${i}`).setData(droneRoute);
+    });
+
+    // Start the main animation
+    animate(0);
+  }
+
+  function animateCircling() {
+    const time = Date.now() * 0.001; // Convert to seconds
+    const radius = 0.01; // Radius of the circle in degrees
+
+    dronesRef.current.forEach((drone, i) => {
+      const centerPoint = powerPlants[i].coords;
+      // Calculate new position in a circle
+      const x = centerPoint[0] + Math.cos(time) * radius;
+      const y = centerPoint[1] + Math.sin(time) * radius;
+
+      drone.features[0].geometry.coordinates = [x, y];
+      // Update bearing to be tangent to the circle
+      drone.features[0].properties.bearing =
+        (Math.atan2(Math.cos(time), -Math.sin(time)) * 180) / Math.PI;
+
+      mapRef.current.getSource(`drone${i}`).setData(drone);
+    });
+
+    // Continue the animation if not started
+    if (!isStarted) {
+      circleAnimationRef.current = requestAnimationFrame(animateCircling);
+    }
+  }
+
   function handleReplay() {
+    setIsStarted(false);
     counterRef.current = 0;
     planeRef.current.features[0].geometry.coordinates = originRef.current;
     dronesRef.current.forEach((drone, i) => {
@@ -39,19 +122,20 @@ const MapboxExample = () => {
       mapRef.current.getSource(`drone${i}`).setData(drone);
     });
     mapRef.current.getSource("plane").setData(planeRef.current);
-    animate(0);
+    // Start circling animation instead of main animation
+    animateCircling();
   }
 
   function animate() {
     const start =
       planeRouteRef.current.features[0].geometry.coordinates[
-        counterRef.current >= steps
+        counterRef.current >= stepsRef.current
           ? counterRef.current - 1
           : counterRef.current
       ];
     const end =
       planeRouteRef.current.features[0].geometry.coordinates[
-        counterRef.current >= steps
+        counterRef.current >= stepsRef.current
           ? counterRef.current
           : counterRef.current + 1
       ];
@@ -73,13 +157,13 @@ const MapboxExample = () => {
       const droneRoute = droneRoutesRef.current[i];
       const start =
         droneRoute.features[0].geometry.coordinates[
-          counterRef.current >= steps
+          counterRef.current >= stepsRef.current
             ? counterRef.current - 1
             : counterRef.current
         ];
       const end =
         droneRoute.features[0].geometry.coordinates[
-          counterRef.current >= steps
+          counterRef.current >= stepsRef.current
             ? counterRef.current
             : counterRef.current + 1
         ];
@@ -95,7 +179,7 @@ const MapboxExample = () => {
       }
     });
 
-    if (counterRef.current < steps) {
+    if (counterRef.current < stepsRef.current) {
       requestAnimationFrame(animate);
     }
 
@@ -117,6 +201,14 @@ const MapboxExample = () => {
     originRef.current = origin;
     const destination = endCoords;
 
+    // Calculate total distance and time for plane route
+    const planeDistance =
+      turf.distance(turf.point(origin), turf.point(destination), {
+        units: "kilometers",
+      }) * 1000; // Convert to meters
+    const planeTime = planeDistance / PLANE_SPEED; // Time in seconds
+    stepsRef.current = Math.ceil(planeTime * 60); // 60 fps animation
+
     // Create plane route with arc
     const planeRoute = {
       type: "FeatureCollection",
@@ -131,11 +223,14 @@ const MapboxExample = () => {
       ],
     };
 
-    // Calculate arc points for plane route
-    const lineDistance = turf.length(planeRoute.features[0]);
+    // Modify arc points calculation for plane
     const arc = [];
-    for (let i = 0; i < lineDistance; i += lineDistance / steps) {
-      const segment = turf.along(planeRoute.features[0], i);
+    for (let i = 0; i <= stepsRef.current; i++) {
+      const segment = turf.along(
+        planeRoute.features[0],
+        (planeDistance * i) / stepsRef.current,
+        { units: "meters" }
+      );
       arc.push(segment.geometry.coordinates);
     }
     planeRoute.features[0].geometry.coordinates = arc;
@@ -197,9 +292,9 @@ const MapboxExample = () => {
 
       // Initialize multiple drones and their routes
       powerPlants.forEach((plant, i) => {
-        // Calculate interception point - spread drones along the plane's route
+        // Calculate interception time based on distances and speeds
         const interceptPoint = Math.floor(
-          (steps * (i + 1)) / (powerPlants.length + 1)
+          (stepsRef.current * (i + 1)) / (powerPlants.length + 1)
         );
         const destination2 =
           planeRoute.features[0].geometry.coordinates[interceptPoint];
@@ -234,21 +329,26 @@ const MapboxExample = () => {
           ],
         };
 
-        // Modify arc points calculation to create fewer points for faster drone movement
+        // Calculate drone route with proper timing
+        const droneDistance =
+          turf.distance(turf.point(plant.coords), turf.point(destination2), {
+            units: "kilometers",
+          }) * 1000; // Convert to meters
+        const droneTime = droneDistance / DRONE_SPEED;
+        const droneSteps = Math.ceil(droneTime * 60); // 60 fps animation
+
         const arc = [];
-        const lineDistance = turf.length(droneRoute.features[0]);
-        // Use fewer steps for drones to make them arrive earlier
-        const droneSteps = interceptPoint;
         for (let j = 0; j <= droneSteps; j++) {
           const segment = turf.along(
             droneRoute.features[0],
-            (lineDistance * j) / droneSteps
+            (droneDistance * j) / droneSteps,
+            { units: "meters" }
           );
           arc.push(segment.geometry.coordinates);
         }
 
-        // Pad the remaining points with the final coordinate to keep drone stationary
-        while (arc.length <= steps) {
+        // Pad the remaining points with the final coordinate
+        while (arc.length <= stepsRef.current) {
           arc.push(destination2);
         }
 
@@ -329,11 +429,15 @@ const MapboxExample = () => {
         markersRef.current.push(marker);
       });
 
-      animate(counterRef.current);
+      // Start with circling animation instead of main animation
+      animateCircling();
     });
 
-    // Cleanup function
+    // Update cleanup
     return () => {
+      if (circleAnimationRef.current) {
+        cancelAnimationFrame(circleAnimationRef.current);
+      }
       markersRef.current.forEach((marker) => marker.remove());
       mapRef.current?.remove();
     };
@@ -440,22 +544,36 @@ const MapboxExample = () => {
           />
         </div>
 
-        <button
-          style={{
-            backgroundColor: "#3386c0",
-            color: "#fff",
-            display: "inline-block",
-            margin: "0",
-            padding: "10px 20px",
-            border: "none",
-            cursor: "pointer",
-            borderRadius: "3px",
-          }}
-          onClick={handleReplay}
-          id="replay"
-        >
-          Replay
-        </button>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button
+            style={{
+              backgroundColor: "#3386c0",
+              color: "#fff",
+              padding: "10px 20px",
+              border: "none",
+              cursor: "pointer",
+              borderRadius: "3px",
+            }}
+            onClick={handleStart}
+            disabled={isStarted}
+          >
+            Start
+          </button>
+
+          <button
+            style={{
+              backgroundColor: "#3386c0",
+              color: "#fff",
+              padding: "10px 20px",
+              border: "none",
+              cursor: "pointer",
+              borderRadius: "3px",
+            }}
+            onClick={handleReplay}
+          >
+            Replay
+          </button>
+        </div>
       </div>
     </div>
   );
