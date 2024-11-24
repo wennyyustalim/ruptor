@@ -510,39 +510,11 @@ const MapboxJs = () => {
   }, [startCoords, endCoords]);
 
   return (
-    <div
-      style={{
-        height: "100vh",
-        width: "100%",
-        position: "relative",
-      }}
-    >
-      <div
-        ref={mapContainerRef}
-        style={{
-          height: "100%",
-          width: "100%",
-          position: "absolute",
-          top: 0,
-          left: 0,
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          top: "10px",
-          left: "10px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "10px",
-          padding: "10px",
-          borderRadius: "5px",
-        }}
-      >
+    <div className="relative h-screen w-full">
+      <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
+      <div className="absolute top-2.5 left-2.5 flex flex-col gap-2.5 p-2.5 rounded">
         <div>
-          <label style={{ display: "block", marginBottom: "5px" }}>
-            Start coordinates:
-          </label>
+          <label className="block mb-1.5">Start coordinates:</label>
           <input
             type="number"
             placeholder="longitude"
@@ -556,7 +528,7 @@ const MapboxJs = () => {
             min="-180"
             max="180"
             step="0.0001"
-            style={{ width: "80px", background: "black" }}
+            className="w-20 bg-black"
           />
           <input
             type="number"
@@ -571,13 +543,11 @@ const MapboxJs = () => {
             min="-90"
             max="90"
             step="0.0001"
-            style={{ width: "80px", background: "black" }}
+            className="w-20 bg-black"
           />
         </div>
         <div>
-          <label style={{ display: "block", marginBottom: "5px" }}>
-            End coordinates:
-          </label>
+          <label className="block mb-1.5">End coordinates:</label>
           <input
             type="number"
             placeholder="longitude"
@@ -591,7 +561,7 @@ const MapboxJs = () => {
             min="-180"
             max="180"
             step="0.0001"
-            style={{ width: "80px", background: "black" }}
+            className="w-20 bg-black"
           />
           <input
             type="number"
@@ -606,20 +576,13 @@ const MapboxJs = () => {
             min="-90"
             max="90"
             step="0.0001"
-            style={{ width: "80px", background: "black" }}
+            className="w-20 bg-black"
           />
         </div>
 
-        <div style={{ display: "flex", gap: "10px" }}>
+        <div className="flex gap-2.5">
           <button
-            style={{
-              backgroundColor: "#3386c0",
-              color: "#fff",
-              padding: "10px 20px",
-              border: "none",
-              cursor: "pointer",
-              borderRadius: "3px",
-            }}
+            className="bg-blue-500 text-white px-4 py-2 rounded"
             onClick={handleStart}
             disabled={isStarted}
           >
@@ -627,14 +590,7 @@ const MapboxJs = () => {
           </button>
 
           <button
-            style={{
-              backgroundColor: "#3386c0",
-              color: "#fff",
-              padding: "10px 20px",
-              border: "none",
-              cursor: "pointer",
-              borderRadius: "3px",
-            }}
+            className="bg-blue-500 text-white px-4 py-2 rounded"
             onClick={handleReplay}
           >
             Replay
