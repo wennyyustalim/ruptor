@@ -21,11 +21,7 @@ const MapboxJsWorking = () => {
   const droneRoutesRef = useRef([]);
   const stepsRef = useRef(0);
   const counterRef = useRef(0);
-  const droneHistoriesRef = useRef(
-    Array(num_drones)
-      .fill()
-      .map(() => [])
-  );
+  const droneHistoriesRef = useRef(Array(num_drones).fill().map(() => []));
   const planeStartedRef = useRef(false);
   const dronesLaunchedRef = useRef(false);
   const droneLaunchCounterRef = useRef(0);
@@ -38,12 +34,13 @@ const MapboxJsWorking = () => {
   const [droneHits, setDroneHits] = useState(0);
   const [planeStarted, setPlaneStarted] = useState(false);
   const [dronesLaunched, setDronesLaunched] = useState(false);
+  const [clickedPoint, setClickedPoint] = useState(null);
 
   // Replace the powerPlants array with this:
   const powerPlants = Array.from({ length: num_drones }, (_, i) => {
     const radius = 0.18; // approximately 20km in degrees (doubled from 0.09)
     // Calculate angle for 120 degrees (2π/3 radians)
-    const angle = Math.PI / 6 + (((2 * Math.PI) / 3) * i) / (num_drones - 1);
+    const angle = Math.PI / 6 + ((2 * Math.PI) / 3) * i / (num_drones - 1);
     // Kharkiv coordinates: [36.296784, 49.995023]
     return {
       name: `Border Point ${i + 1}`,
@@ -63,15 +60,15 @@ const MapboxJsWorking = () => {
   function handleStart() {
     planeStartedRef.current = true;
     setPlaneStarted(true);
-
+    
     // Show the plane route
     mapRef.current.setLayoutProperty("planeRoute", "visibility", "visible");
     mapRef.current.getSource("planeRoute").setData(planeRouteRef.current);
-
+    
     // Reset plane to starting position
     planeRef.current.features[0].geometry.coordinates = originRef.current;
     mapRef.current.getSource("plane").setData(planeRef.current);
-
+    
     // Reset counter
     counterRef.current = 0;
   }
@@ -80,39 +77,37 @@ const MapboxJsWorking = () => {
     dronesLaunchedRef.current = true;
     setDronesLaunched(true);
     droneLaunchCounterRef.current = counterRef.current;
-
+    
     // Calculate new intercept paths from current positions
     dronesRef.current.forEach((drone, i) => {
       const currentPosition = drone.features[0].geometry.coordinates;
-
+      
       // Find current plane position
       const planePosition = planeRef.current.features[0].geometry.coordinates;
-
+      
       // Calculate remaining plane route from current position
-      const remainingPlaneRoute =
-        planeRouteRef.current.features[0].geometry.coordinates.slice(
-          counterRef.current
-        );
-
+      const remainingPlaneRoute = planeRouteRef.current.features[0].geometry.coordinates.slice(counterRef.current);
+      
       // Find closest point on remaining plane route to drone
       const closestPoint = turf.nearestPointOnLine(
         {
           type: "Feature",
           geometry: {
             type: "LineString",
-            coordinates: remainingPlaneRoute,
-          },
+            coordinates: remainingPlaneRoute
+          }
         },
         turf.point(currentPosition)
       );
 
       // Calculate drone route to intercept point
       const interceptPoint = closestPoint.geometry.coordinates;
-      const droneDistance =
-        turf.distance(turf.point(currentPosition), turf.point(interceptPoint), {
-          units: "kilometers",
-        }) * 1000; // Convert to meters
-
+      const droneDistance = turf.distance(
+        turf.point(currentPosition),
+        turf.point(interceptPoint),
+        { units: "kilometers" }
+      ) * 1000; // Convert to meters
+      
       const droneTime = droneDistance / DRONE_SPEED;
       const droneSteps = Math.ceil(droneTime * 60); // 60 fps animation
 
@@ -134,27 +129,20 @@ const MapboxJsWorking = () => {
 
       // Update drone route
       droneRoutesRef.current[i].features[0].geometry.coordinates = arc;
-      mapRef.current
-        .getSource(`droneRoute${i}`)
-        .setData(droneRoutesRef.current[i]);
-      mapRef.current.setLayoutProperty(
-        `droneRoute${i}`,
-        "visibility",
-        "visible"
-      );
+      mapRef.current.getSource(`droneRoute${i}`).setData(droneRoutesRef.current[i]);
+      mapRef.current.setLayoutProperty(`droneRoute${i}`, "visibility", "visible");
     });
   }
 
   function animateCombined() {
     // Animate plane
     if (planeStartedRef.current) {
-      const coordinates =
-        planeRouteRef.current.features[0].geometry.coordinates;
-
+      const coordinates = planeRouteRef.current.features[0].geometry.coordinates;
+      
       if (counterRef.current < coordinates.length - 1) {
         const start = coordinates[counterRef.current];
         const end = coordinates[counterRef.current + 1];
-
+        
         // Update plane position
         planeRef.current.features[0].geometry.coordinates = start;
         planeRef.current.features[0].properties.bearing = turf.bearing(
@@ -167,9 +155,9 @@ const MapboxJsWorking = () => {
         const distance = turf.distance(
           turf.point(start),
           turf.point(GROUND_STATION_COORDS),
-          { units: "kilometers" }
+          { units: 'kilometers' }
         );
-
+        
         // If plane is within 20km of ground station and drones haven't launched yet
         if (distance <= 20 && !dronesLaunchedRef.current) {
           handleLaunchDrones();
@@ -183,7 +171,7 @@ const MapboxJsWorking = () => {
       const speedFactor = 0.2;
       const time = Date.now() * 0.001 * speedFactor;
       const radius = 0.01;
-
+      
       dronesRef.current.forEach((drone, i) => {
         const centerPoint = powerPlants[i].coords;
         const x = centerPoint[0] + Math.cos(time) * radius;
@@ -191,8 +179,7 @@ const MapboxJsWorking = () => {
 
         // Update drone position
         drone.features[0].geometry.coordinates = [x, y];
-        drone.features[0].properties.bearing =
-          (Math.atan2(Math.cos(time), -Math.sin(time)) * 180) / Math.PI;
+        drone.features[0].properties.bearing = (Math.atan2(Math.cos(time), -Math.sin(time)) * 180) / Math.PI;
         mapRef.current.getSource(`drone${i}`).setData(drone);
 
         // Update history with longer trail (changed from 100 to 1000)
@@ -202,16 +189,9 @@ const MapboxJsWorking = () => {
         }
 
         // Update the drone route to show the history
-        droneRoutesRef.current[i].features[0].geometry.coordinates =
-          droneHistoriesRef.current[i];
-        mapRef.current
-          .getSource(`droneRoute${i}`)
-          .setData(droneRoutesRef.current[i]);
-        mapRef.current.setLayoutProperty(
-          `droneRoute${i}`,
-          "visibility",
-          "visible"
-        );
+        droneRoutesRef.current[i].features[0].geometry.coordinates = droneHistoriesRef.current[i];
+        mapRef.current.getSource(`droneRoute${i}`).setData(droneRoutesRef.current[i]);
+        mapRef.current.setLayoutProperty(`droneRoute${i}`, "visibility", "visible");
 
         // Update the radius circle
         mapRef.current.getSource(`droneRadius${i}`).setData({
@@ -221,23 +201,22 @@ const MapboxJsWorking = () => {
             coordinates: [x, y],
           },
           properties: {
-            radius: 20000,
-          },
+            radius: 20000
+          }
         });
       });
     } else {
       // Animate drones along intercept paths
       const droneStep = counterRef.current - droneLaunchCounterRef.current; // Calculate steps since launch
-
+      
       dronesRef.current.forEach((drone, i) => {
         const droneRoute = droneRoutesRef.current[i];
         const coordinates = droneRoute.features[0].geometry.coordinates;
-
+        
         if (droneStep < coordinates.length) {
           const position = coordinates[droneStep];
-          const nextPosition =
-            coordinates[Math.min(droneStep + 1, coordinates.length - 1)];
-
+          const nextPosition = coordinates[Math.min(droneStep + 1, coordinates.length - 1)];
+          
           drone.features[0].geometry.coordinates = position;
           drone.features[0].properties.bearing = turf.bearing(
             turf.point(position),
@@ -274,12 +253,10 @@ const MapboxJsWorking = () => {
     setPlaneStarted(false);
     setDronesLaunched(false);
     counterRef.current = 0;
-
+    
     // Clear drone histories
-    droneHistoriesRef.current = Array(num_drones)
-      .fill()
-      .map(() => []);
-
+    droneHistoriesRef.current = Array(num_drones).fill().map(() => []);
+    
     // Reset plane position but keep the route visible
     planeRef.current.features[0].geometry.coordinates = originRef.current;
     mapRef.current.getSource("plane").setData(planeRef.current);
@@ -609,9 +586,9 @@ const MapboxJsWorking = () => {
           type: "Feature",
           geometry: {
             type: "Point",
-            coordinates: GROUND_STATION_COORDS,
-          },
-        },
+            coordinates: GROUND_STATION_COORDS
+          }
+        }
       });
 
       // Add ground station layer
@@ -627,19 +604,19 @@ const MapboxJsWorking = () => {
           "text-field": "Ground Station",
           "text-offset": [0, 1.5],
           "text-anchor": "top",
-          "text-size": 12,
+          "text-size": 12
         },
         paint: {
           "text-color": "#ffffff",
           "text-halo-color": "#000000",
-          "text-halo-width": 1,
-        },
+          "text-halo-width": 1
+        }
       });
 
       // Add ground station radius (15km ≈ 0.135 degrees)
       mapRef.current.addSource("groundStationRadius", {
         type: "geojson",
-        data: turf.circle(GROUND_STATION_COORDS, 20, { units: "kilometers" }),
+        data: turf.circle(GROUND_STATION_COORDS, 20, { units: 'kilometers' })
       });
 
       mapRef.current.addLayer({
@@ -648,12 +625,54 @@ const MapboxJsWorking = () => {
         type: "fill",
         paint: {
           "fill-color": "#800080",
-          "fill-opacity": 0.2,
-        },
+          "fill-opacity": 0.2
+        }
       });
 
       // Start the combined animation immediately
       animateCombined();
+
+      // Add clicked point source and layer BEFORE adding the click event listener
+      mapRef.current.addSource('clicked-point', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [36.4, 50.3] // Set initial coordinates to map center
+          }
+        }
+      });
+
+      mapRef.current.addLayer({
+        id: 'clicked-point',
+        source: 'clicked-point',
+        type: 'circle',
+        layout: {
+          visibility: 'none'  // Hide the layer initially
+        },
+        paint: {
+          'circle-radius': 8,
+          'circle-color': '#ff0000',
+          'circle-opacity': 0.8
+        }
+      });
+
+      // Add click event listener
+      mapRef.current.on('click', (e) => {
+        console.log('Map clicked:', e.lngLat);
+        
+        // Show the layer if it's hidden
+        mapRef.current.setLayoutProperty('clicked-point', 'visibility', 'visible');
+        
+        mapRef.current.getSource('clicked-point').setData({
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [e.lngLat.lng, e.lngLat.lat]
+          }
+        });
+      });
     });
 
     // Update cleanup
@@ -669,121 +688,107 @@ const MapboxJsWorking = () => {
 
       {/* Logo and Team Name */}
       <div className="absolute top-2.5 left-2.5 flex items-center gap-2.5 p-2.5 bg-black/50 rounded">
-        <div className="flex flex-col">
-          <div className="flex flex-row space-x-2">
-            <img src="/logo.png" alt="Interruptor Logo" className="h-8 w-8" />
-            <span className="text-white font-bold text-xl">R U P T O R</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-white font-bold text-xl">
-              Successful Intercepts: {droneHits}
-            </span>
-          </div>
-          <div>
-            <label className="block mb-1.5 text-white">
-              Bomb start coordinates:
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="number"
-                placeholder="longitude"
-                value={startCoords[0]}
-                onChange={(e) => {
-                  const lon = parseFloat(e.target.value);
-                  if (!isNaN(lon) && lon >= -180 && lon <= 180) {
-                    setStartCoords([lon, startCoords[1]]);
-                  }
-                }}
-                min="-180"
-                max="180"
-                step="0.0001"
-                className="w-24 bg-black/70 text-white px-2 py-1 rounded"
-              />
-              <input
-                type="number"
-                placeholder="latitude"
-                value={startCoords[1]}
-                onChange={(e) => {
-                  const lat = parseFloat(e.target.value);
-                  if (!isNaN(lat) && lat >= -90 && lat <= 90) {
-                    setStartCoords([startCoords[0], lat]);
-                  }
-                }}
-                min="-90"
-                max="90"
-                step="0.0001"
-                className="w-24 bg-black/70 text-white px-2 py-1 rounded"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block mb-1.5 text-white">
-              Bomb end coordinates:
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="number"
-                placeholder="longitude"
-                value={endCoords[0]}
-                onChange={(e) => {
-                  const lon = parseFloat(e.target.value);
-                  if (!isNaN(lon) && lon >= -180 && lon <= 180) {
-                    setEndCoords([lon, endCoords[1]]);
-                  }
-                }}
-                min="-180"
-                max="180"
-                step="0.0001"
-                className="w-24 bg-black/70 text-white px-2 py-1 rounded"
-              />
-              <input
-                type="number"
-                placeholder="latitude"
-                value={endCoords[1]}
-                onChange={(e) => {
-                  const lat = parseFloat(e.target.value);
-                  if (!isNaN(lat) && lat >= -90 && lat <= 90) {
-                    setEndCoords([endCoords[0], lat]);
-                  }
-                }}
-                min="-90"
-                max="90"
-                step="0.0001"
-                className="w-24 bg-black/70 text-white px-2 py-1 rounded"
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-2.5">
-            <button
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors"
-              onClick={handleStart}
-              disabled={planeStarted}
-            >
-              Launch Plane
-            </button>
-
-            <button
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors"
-              onClick={handleReplay}
-            >
-              Replay
-            </button>
-          </div>
-        </div>
+        <img src="/logo.png" alt="Interruptor Logo" className="h-8 w-8" />
+        <span className="text-white font-bold text-xl">Interruptor</span>
       </div>
 
-      {/* Update the iframe container styling */}
-      <div className="absolute top-3 right-3 z-50 bg-black/50 p-2 rounded">
-        <iframe
-          width="360"
-          height="240"
-          src="https://www.youtube.com/embed/n5NMjbaHu8c?enablejsapi=1&loop=1&playlist=n5NMjbaHu8c&autoplay=1&mute=1&controls=0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          className="rounded"
-        ></iframe>
+      {/* Add hits counter */}
+      <div className="absolute top-2.5 right-2.5 p-2.5 bg-black/50 rounded">
+        <span className="text-white font-bold">
+          Successful Intercepts: {droneHits}
+        </span>
+      </div>
+
+      {/* Controls - moved down to accommodate logo */}
+      <div className="absolute top-20 left-2.5 flex flex-col gap-2.5 p-2.5 bg-black/50 rounded">
+        <div>
+          <label className="block mb-1.5 text-white">Start coordinates:</label>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              placeholder="longitude"
+              value={startCoords[0]}
+              onChange={(e) => {
+                const lon = parseFloat(e.target.value);
+                if (!isNaN(lon) && lon >= -180 && lon <= 180) {
+                  setStartCoords([lon, startCoords[1]]);
+                }
+              }}
+              min="-180"
+              max="180"
+              step="0.0001"
+              className="w-24 bg-black/70 text-white px-2 py-1 rounded"
+            />
+            <input
+              type="number"
+              placeholder="latitude"
+              value={startCoords[1]}
+              onChange={(e) => {
+                const lat = parseFloat(e.target.value);
+                if (!isNaN(lat) && lat >= -90 && lat <= 90) {
+                  setStartCoords([startCoords[0], lat]);
+                }
+              }}
+              min="-90"
+              max="90"
+              step="0.0001"
+              className="w-24 bg-black/70 text-white px-2 py-1 rounded"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block mb-1.5 text-white">End coordinates:</label>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              placeholder="longitude"
+              value={endCoords[0]}
+              onChange={(e) => {
+                const lon = parseFloat(e.target.value);
+                if (!isNaN(lon) && lon >= -180 && lon <= 180) {
+                  setEndCoords([lon, endCoords[1]]);
+                }
+              }}
+              min="-180"
+              max="180"
+              step="0.0001"
+              className="w-24 bg-black/70 text-white px-2 py-1 rounded"
+            />
+            <input
+              type="number"
+              placeholder="latitude"
+              value={endCoords[1]}
+              onChange={(e) => {
+                const lat = parseFloat(e.target.value);
+                if (!isNaN(lat) && lat >= -90 && lat <= 90) {
+                  setEndCoords([endCoords[0], lat]);
+                }
+              }}
+              min="-90"
+              max="90"
+              step="0.0001"
+              className="w-24 bg-black/70 text-white px-2 py-1 rounded"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-2.5">
+          <button
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors"
+            onClick={handleStart}
+            disabled={planeStarted}
+          >
+            Launch Plane
+          </button>
+
+          <button
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors"
+            onClick={handleReplay}
+          >
+            Replay
+          </button>
+        </div>
       </div>
     </div>
   );
