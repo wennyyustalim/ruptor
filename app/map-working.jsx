@@ -38,6 +38,13 @@ const MapboxJsWorking = () => {
   const [droneHits, setDroneHits] = useState(0);
   const [planeStarted, setPlaneStarted] = useState(false);
   const [dronesLaunched, setDronesLaunched] = useState(false);
+  // Add new refs for the API-controlled drone
+  const apiDroneRef = useRef(null);
+  const apiDroneRouteRef = useRef(null);
+  const apiDroneHistoryRef = useRef([]);
+  const [isApiDroneTracking, setIsApiDroneTracking] = useState(false);
+  // Add new state for controlling the interval
+  const [fetchInterval, setFetchInterval] = useState(null);
 
   // Replace the powerPlants array with this:
   const powerPlants = Array.from({ length: num_drones }, (_, i) => {
@@ -63,6 +70,7 @@ const MapboxJsWorking = () => {
   function handleStart() {
     planeStartedRef.current = true;
     setPlaneStarted(true);
+    setIsApiDroneTracking(true);
 
     // Show the plane route
     mapRef.current.setLayoutProperty("planeRoute", "visibility", "visible");
@@ -273,6 +281,7 @@ const MapboxJsWorking = () => {
     dronesLaunchedRef.current = false;
     setPlaneStarted(false);
     setDronesLaunched(false);
+    setIsApiDroneTracking(false);
     counterRef.current = 0;
 
     // Clear drone histories
@@ -316,6 +325,25 @@ const MapboxJsWorking = () => {
     dronesRef.current.forEach((drone) => {
       drone.features[0].properties.hasHit = false;
     });
+
+    // Reset API drone
+    if (apiDroneRef.current) {
+      apiDroneRef.current.features[0].geometry.coordinates = [36.4, 50.3]; // Initial position
+      mapRef.current.getSource("apiDrone").setData(apiDroneRef.current);
+      apiDroneHistoryRef.current = [];
+      mapRef.current.getSource("apiDroneRoute").setData({
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            geometry: {
+              type: "LineString",
+              coordinates: [],
+            },
+          },
+        ],
+      });
+    }
   }
 
   useEffect(() => {
@@ -652,6 +680,75 @@ const MapboxJsWorking = () => {
         },
       });
 
+      // Initialize API-controlled drone
+      const apiDrone = {
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: {},
+            geometry: {
+              type: "Point",
+              coordinates: [36.4, 50.3], // Initial position
+            },
+          },
+        ],
+      };
+      apiDroneRef.current = apiDrone;
+
+      // Create API drone route
+      const apiDroneRoute = {
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            geometry: {
+              type: "LineString",
+              coordinates: [],
+            },
+          },
+        ],
+      };
+      apiDroneRouteRef.current = apiDroneRoute;
+
+      // Add API drone sources and layers
+      mapRef.current.addSource("apiDrone", {
+        type: "geojson",
+        data: apiDrone,
+      });
+
+      mapRef.current.addSource("apiDroneRoute", {
+        type: "geojson",
+        data: apiDroneRoute,
+      });
+
+      mapRef.current.addLayer({
+        id: "apiDrone",
+        source: "apiDrone",
+        type: "symbol",
+        layout: {
+          "icon-image": "rocket",
+          "icon-size": 1.0,
+          "icon-rotate": ["get", "bearing"],
+          "icon-rotation-alignment": "map",
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+        },
+        paint: {
+          "icon-color": "#ffff00", // Yellow to distinguish from other drones
+        },
+      });
+
+      mapRef.current.addLayer({
+        id: "apiDroneRoute",
+        source: "apiDroneRoute",
+        type: "line",
+        paint: {
+          "line-width": 2,
+          "line-color": "#ffff00",
+        },
+      });
+
       // Start the combined animation immediately
       animateCombined();
     });
@@ -662,6 +759,65 @@ const MapboxJsWorking = () => {
       mapRef.current?.remove();
     };
   }, [startCoords, endCoords]);
+
+  // Add new useEffect to handle API polling
+  useEffect(() => {
+    if (isApiDroneTracking) {
+      // Start polling every second
+      const interval = setInterval(() => {
+        fetch("/api/position")
+          .then((response) => response.json())
+          .then((data) => {
+            const newCoords = [data.longitude, data.latitude];
+
+            if (apiDroneRef.current) {
+              // Update drone position
+              apiDroneRef.current.features[0].geometry.coordinates = newCoords;
+
+              // Calculate bearing if we have previous coordinates
+              if (apiDroneHistoryRef.current.length > 0) {
+                const prevCoords =
+                  apiDroneHistoryRef.current[
+                    apiDroneHistoryRef.current.length - 1
+                  ];
+                apiDroneRef.current.features[0].properties.bearing =
+                  turf.bearing(turf.point(prevCoords), turf.point(newCoords));
+              }
+
+              mapRef.current.getSource("apiDrone").setData(apiDroneRef.current);
+
+              // Update history trail
+              apiDroneHistoryRef.current.push(newCoords);
+              if (apiDroneHistoryRef.current.length > 1000) {
+                apiDroneHistoryRef.current.shift();
+              }
+
+              // Update the route to show history
+              apiDroneRouteRef.current.features[0].geometry.coordinates =
+                apiDroneHistoryRef.current;
+              mapRef.current
+                .getSource("apiDroneRoute")
+                .setData(apiDroneRouteRef.current);
+            }
+          })
+          .catch((error) =>
+            console.error("Error fetching drone position:", error)
+          );
+      }, 1000); // Poll every 1000ms (1 second)
+
+      setFetchInterval(interval);
+
+      // Cleanup function
+      return () => {
+        if (interval) {
+          clearInterval(interval);
+        }
+      };
+    } else if (fetchInterval) {
+      clearInterval(fetchInterval);
+      setFetchInterval(null);
+    }
+  }, [isApiDroneTracking]);
 
   return (
     <div className="relative h-screen w-full">
