@@ -30,11 +30,11 @@ const MapboxExample = () => {
   // Add power plant locations
   const powerPlants = [
     { name: "Border Point 1", coords: [36.15, 50.15] },
-    { name: "Border Point 2", coords: [36.25, 50.15] },
-    { name: "Border Point 3", coords: [36.35, 50.15] },
-    { name: "Border Point 4", coords: [36.45, 50.15] },
-    { name: "Border Point 5", coords: [36.55, 50.15] },
-    { name: "Border Point 6", coords: [36.65, 50.15] },
+    { name: "Border Point 2", coords: [36.25, 50.1612] },
+    { name: "Border Point 3", coords: [36.35, 50.1496] },
+    { name: "Border Point 4", coords: [36.45, 50.1734] },
+    { name: "Border Point 5", coords: [36.55, 50.1888] },
+    { name: "Border Point 6", coords: [36.65, 50.151] },
   ];
 
   function handleStart() {
