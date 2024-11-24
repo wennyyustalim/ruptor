@@ -6,11 +6,12 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import * as turf from "@turf/turf";
 
 // Speeds in m/s
-const MULTIPLIER = 5;
+const MULTIPLIER = 1;
 const DRONE_SPEED = 45 * MULTIPLIER;
 const PLANE_SPEED = 280 * MULTIPLIER;
 const REFRESH_RATE = 200;
 const NUM_API_DRONES = 6;
+const GROUND_STATION_RADIUS = 30;
 
 // Add this array near the top of your component, after the constants
 const DRONE_COLORS = [
@@ -407,7 +408,7 @@ const MapboxJsWorking = () => {
         );
 
         // If plane is within 20km of ground station and drones haven't launched yet
-        if (distance <= 20 && !dronesLaunchedRef.current) {
+        if (distance <= GROUND_STATION_RADIUS && !dronesLaunchedRef.current) {
           handleLaunchDrones();
         }
       }
@@ -995,7 +996,9 @@ const MapboxJsWorking = () => {
       // Add ground station radius (15km ≈ 0.135 degrees)
       mapRef.current.addSource("groundStationRadius", {
         type: "geojson",
-        data: turf.circle(GROUND_STATION_COORDS, 20, { units: "kilometers" }),
+        data: turf.circle(GROUND_STATION_COORDS, GROUND_STATION_RADIUS, {
+          units: "kilometers",
+        }),
       });
 
       mapRef.current.addLayer({
