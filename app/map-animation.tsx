@@ -44,11 +44,15 @@ const MapboxExample = () => {
   function animate() {
     const start =
       planeRouteRef.current.features[0].geometry.coordinates[
-        counterRef.current >= steps ? counterRef.current - 1 : counterRef.current
+        counterRef.current >= steps
+          ? counterRef.current - 1
+          : counterRef.current
       ];
     const end =
       planeRouteRef.current.features[0].geometry.coordinates[
-        counterRef.current >= steps ? counterRef.current : counterRef.current + 1
+        counterRef.current >= steps
+          ? counterRef.current
+          : counterRef.current + 1
       ];
 
     if (!start || !end) {
@@ -57,7 +61,9 @@ const MapboxExample = () => {
     }
 
     planeRef.current.features[0].geometry.coordinates =
-      planeRouteRef.current.features[0].geometry.coordinates[counterRef.current];
+      planeRouteRef.current.features[0].geometry.coordinates[
+        counterRef.current
+      ];
 
     planeRef.current.features[0].properties.bearing = turf.bearing(
       turf.point(start),
@@ -71,11 +77,15 @@ const MapboxExample = () => {
       const droneRoute = droneRoutesRef.current[i];
       const start =
         droneRoute.features[0].geometry.coordinates[
-          counterRef.current >= steps ? counterRef.current - 1 : counterRef.current
+          counterRef.current >= steps
+            ? counterRef.current - 1
+            : counterRef.current
         ];
       const end =
         droneRoute.features[0].geometry.coordinates[
-          counterRef.current >= steps ? counterRef.current : counterRef.current + 1
+          counterRef.current >= steps
+            ? counterRef.current
+            : counterRef.current + 1
         ];
 
       if (start && end) {
@@ -192,11 +202,8 @@ const MapboxExample = () => {
 
       // Initialize multiple drones and their routes
       powerPlants.forEach((plant, i) => {
-        // Calculate intercept point (midpoint between plant and plane destination)
-        const destination2 = [
-          (plant.coords[0] + destination[0]) / 2,
-          (plant.coords[1] + destination[1]) / 2,
-        ];
+        // Change destination2 to be the final plane destination instead of midpoint
+        const destination2 = destination; // Now drones will go to plane's destination
 
         // Create drone
         const drone = {
@@ -228,11 +235,14 @@ const MapboxExample = () => {
           ],
         };
 
-        // Calculate arc points for smooth animation
-        const lineDistance = turf.length(droneRoute.features[0]);
+        // Modify arc points calculation to create exactly 'steps' number of points
         const arc = [];
-        for (let i = 0; i < lineDistance; i += lineDistance / steps) {
-          const segment = turf.along(droneRoute.features[0], i);
+        const lineDistance = turf.length(droneRoute.features[0]);
+        for (let j = 0; j <= steps; j++) {
+          const segment = turf.along(
+            droneRoute.features[0],
+            (lineDistance * j) / steps
+          );
           arc.push(segment.geometry.coordinates);
         }
         droneRoute.features[0].geometry.coordinates = arc;
