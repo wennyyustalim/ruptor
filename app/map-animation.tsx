@@ -337,21 +337,33 @@ const MapboxExample = () => {
             Start coordinates:
           </label>
           <input
-            type="text"
+            type="number"
             placeholder="longitude"
             value={startCoords[0]}
-            onChange={(e) =>
-              setStartCoords([parseFloat(e.target.value), startCoords[1]])
-            }
+            onChange={(e) => {
+              const lon = parseFloat(e.target.value);
+              if (!isNaN(lon) && lon >= -180 && lon <= 180) {
+                setStartCoords([lon, startCoords[1]]);
+              }
+            }}
+            min="-180"
+            max="180"
+            step="0.0001"
             style={{ width: "80px", background: "black" }}
           />
           <input
-            type="text"
+            type="number"
             placeholder="latitude"
             value={startCoords[1]}
-            onChange={(e) =>
-              setStartCoords([startCoords[0], parseFloat(e.target.value)])
-            }
+            onChange={(e) => {
+              const lat = parseFloat(e.target.value);
+              if (!isNaN(lat) && lat >= -90 && lat <= 90) {
+                setStartCoords([startCoords[0], lat]);
+              }
+            }}
+            min="-90"
+            max="90"
+            step="0.0001"
             style={{ width: "80px", background: "black" }}
           />
         </div>
@@ -360,21 +372,33 @@ const MapboxExample = () => {
             End coordinates:
           </label>
           <input
-            type="text"
+            type="number"
             placeholder="longitude"
             value={endCoords[0]}
-            onChange={(e) =>
-              setEndCoords([parseFloat(e.target.value), endCoords[1]])
-            }
+            onChange={(e) => {
+              const lon = parseFloat(e.target.value);
+              if (!isNaN(lon) && lon >= -180 && lon <= 180) {
+                setEndCoords([lon, endCoords[1]]);
+              }
+            }}
+            min="-180"
+            max="180"
+            step="0.0001"
             style={{ width: "80px", background: "black" }}
           />
           <input
-            type="text"
+            type="number"
             placeholder="latitude"
             value={endCoords[1]}
-            onChange={(e) =>
-              setEndCoords([endCoords[0], parseFloat(e.target.value)])
-            }
+            onChange={(e) => {
+              const lat = parseFloat(e.target.value);
+              if (!isNaN(lat) && lat >= -90 && lat <= 90) {
+                setEndCoords([endCoords[0], lat]);
+              }
+            }}
+            min="-90"
+            max="90"
+            step="0.0001"
             style={{ width: "80px", background: "black" }}
           />
         </div>
