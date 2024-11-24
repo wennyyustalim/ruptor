@@ -151,6 +151,26 @@ const MapboxJsWorking = () => {
         );
         mapRef.current.getSource("plane").setData(planeRef.current);
 
+        // Check for interceptions with drones
+        if (dronesLaunchedRef.current) {
+          dronesRef.current.forEach((drone, i) => {
+            if (!drone.features[0].properties.hasHit) {
+              const dronePos = drone.features[0].geometry.coordinates;
+              const distance = turf.distance(
+                turf.point(dronePos),
+                turf.point(start),
+                { units: 'kilometers' }
+              );
+              
+              // If drone gets within 1km of plane, count as hit
+              if (distance < 1) {
+                drone.features[0].properties.hasHit = true;
+                setDroneHits(prev => prev + 1);
+              }
+            }
+          });
+        }
+
         // Check if plane is within ground station radius
         const distance = turf.distance(
           turf.point(start),
