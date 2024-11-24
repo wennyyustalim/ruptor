@@ -28,15 +28,21 @@ const MapboxJsWorking = () => {
   const circleAnimationRef = useRef(null);
   const [droneHits, setDroneHits] = useState(0);
 
-  // Add power plant locations
-  const powerPlants = [
-    { name: "Border Point 1", coords: [36.15, 50.15] },
-    { name: "Border Point 2", coords: [36.25, 50.1612] },
-    { name: "Border Point 3", coords: [36.35, 50.1496] },
-    { name: "Border Point 4", coords: [36.45, 50.1734] },
-    { name: "Border Point 5", coords: [36.55, 50.1888] },
-    { name: "Border Point 6", coords: [36.65, 50.151] },
-  ];
+  // Replace the powerPlants array with this:
+  const num_drones = 4;
+  const powerPlants = Array.from({ length: num_drones }, (_, i) => {
+    const radius = 0.18; // approximately 20km in degrees (doubled from 0.09)
+    // Calculate angle for 120 degrees (2π/3 radians)
+    const angle = Math.PI / 6 + ((2 * Math.PI) / 3) * i / (num_drones - 1);
+    // Kharkiv coordinates: [36.296784, 49.995023]
+    return {
+      name: `Border Point ${i + 1}`,
+      coords: [
+        36.296784 + radius * Math.cos(angle),
+        49.995023 + radius * Math.sin(angle),
+      ],
+    };
+  });
 
   mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
