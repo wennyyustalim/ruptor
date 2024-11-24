@@ -38,8 +38,8 @@ const MapboxJsIntegration = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          latitude: 69,
-          longitude: 70,
+          latitude: 51.5,
+          longitude: 36.5,
           altitude: 100,
         }),
       });
