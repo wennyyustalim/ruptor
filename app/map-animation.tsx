@@ -44,19 +44,21 @@ const MapboxExample = () => {
     if (circleAnimationRef.current) {
       cancelAnimationFrame(circleAnimationRef.current);
     }
-    
+
     // Update the starting points of drone routes to their current positions
     dronesRef.current.forEach((drone, i) => {
       const currentPosition = drone.features[0].geometry.coordinates;
       const droneRoute = droneRoutesRef.current[i];
-      const destination = droneRoute.features[0].geometry.coordinates[droneRoute.features[0].geometry.coordinates.length - 1];
-      
+      const destination =
+        droneRoute.features[0].geometry.coordinates[
+          droneRoute.features[0].geometry.coordinates.length - 1
+        ];
+
       // Create new route from current position
-      const droneDistance = turf.distance(
-        turf.point(currentPosition), 
-        turf.point(destination), 
-        {units: 'kilometers'}
-      ) * 1000; // Convert to meters
+      const droneDistance =
+        turf.distance(turf.point(currentPosition), turf.point(destination), {
+          units: "kilometers",
+        }) * 1000; // Convert to meters
       const droneTime = droneDistance / DRONE_SPEED;
       const droneSteps = Math.ceil(droneTime * 60); // 60 fps animation
 
@@ -71,7 +73,7 @@ const MapboxExample = () => {
             },
           },
           (droneDistance * j) / droneSteps,
-          {units: 'meters'}
+          { units: "meters" }
         );
         arc.push(segment.geometry.coordinates);
       }
