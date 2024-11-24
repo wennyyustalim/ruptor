@@ -242,6 +242,15 @@ const MapboxJsIntegration = () => {
           Intercept
         </button>
       </div>
+      <div className="absolute top-3 right-3 z-10">
+        <iframe
+          width="360"
+          height="240"
+          src="https://www.youtube.com/embed/n5NMjbaHu8c?enablejsapi=1&loop=1&playlist=n5NMjbaHu8c&autoplay=1&mute=1&controls=0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        ></iframe>
+      </div>
     </div>
   );
 };
