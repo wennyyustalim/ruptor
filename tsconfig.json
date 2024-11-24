@@ -29,5 +29,5 @@
     ".next/types/**/*.ts",
     "app/map-animation.tsx"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "app/map-animation.tsx"]
 }
