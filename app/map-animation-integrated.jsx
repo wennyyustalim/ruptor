@@ -30,6 +30,29 @@ const MapboxJsIntegration = () => {
     setIsTracking(false);
   }
 
+  async function handleIntercept() {
+    try {
+      const response = await fetch("/api/waypoint", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          latitude: 69,
+          longitude: 70,
+          altitude: 100,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log("Waypoint set:", data);
+    } catch (error) {
+      console.error("Error setting waypoint:", error);
+    }
+  }
+
   useEffect(() => {
     const fetchCoordinates = async () => {
       try {
@@ -77,7 +100,7 @@ const MapboxJsIntegration = () => {
     let intervalId;
     if (isTracking) {
       fetchCoordinates();
-      intervalId = setInterval(fetchCoordinates, 1000);
+      intervalId = setInterval(fetchCoordinates, 200);
     }
 
     return () => {
@@ -207,6 +230,16 @@ const MapboxJsIntegration = () => {
           onClick={isTracking ? handleStopTracking : handleStartTracking}
         >
           {isTracking ? "Stop Tracking" : "Start Tracking"}
+        </button>
+        <button
+          className={`rounded px-5 py-2.5 ${
+            isTracking
+              ? "bg-red-500 text-white cursor-pointer hover:bg-red-600"
+              : "bg-green-500 text-white cursor-pointer hover:bg-green-600"
+          }`}
+          onClick={handleIntercept}
+        >
+          Intercept
         </button>
       </div>
     </div>
