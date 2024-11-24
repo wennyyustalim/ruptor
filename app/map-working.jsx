@@ -346,6 +346,30 @@ const MapboxJsWorking = () => {
     }
   }
 
+  // Add handleIntercept function
+  async function handleIntercept() {
+    try {
+      const response = await fetch("/api/waypoint/0", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          latitude: 51.5,
+          longitude: 36.5,
+          altitude: 100,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log("Waypoint set:", data);
+    } catch (error) {
+      console.error("Error setting waypoint:", error);
+    }
+  }
+
   useEffect(() => {
     mapRef.current = new mapboxgl.Map({
       container: mapContainerRef.current,
@@ -765,7 +789,7 @@ const MapboxJsWorking = () => {
     if (isApiDroneTracking) {
       // Start polling every second
       const interval = setInterval(() => {
-        fetch("/api/position")
+        fetch("/api/position/0")
           .then((response) => response.json())
           .then((data) => {
             const newCoords = [data.longitude, data.latitude];
@@ -925,6 +949,14 @@ const MapboxJsWorking = () => {
               onClick={handleReplay}
             >
               Replay
+            </button>
+
+            {/* Add new Intercept button */}
+            <button
+              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition-colors"
+              onClick={handleIntercept}
+            >
+              Intercept
             </button>
           </div>
         </div>
