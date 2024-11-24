@@ -11,19 +11,32 @@ const MapboxExample = () => {
   const originRef = useRef<[number, number]>(null);
   const planeRef = useRef<GeoJSON.FeatureCollection>(null);
   const planeRouteRef = useRef<GeoJSON.FeatureCollection>(null);
-  const droneRef = useRef<GeoJSON.FeatureCollection>(null);
-  const droneRouteRef = useRef<GeoJSON.FeatureCollection>(null);
+  const dronesRef = useRef<GeoJSON.FeatureCollection[]>([]);
+  const droneRoutesRef = useRef<GeoJSON.FeatureCollection[]>([]);
   const [disabled, setDisabled] = useState(true);
   const steps = 500;
-  let counter = 0;
+  const counterRef = useRef(0);
   const [startCoords, setStartCoords] = useState([37.6173, 55.7558]);
   const [endCoords, setEndCoords] = useState([30.5234, 50.4501]);
 
-  function handleClick() {
+  // Add power plant locations
+  const powerPlants = [
+    { name: "Kharkiv", coords: [35.9544, 50.1627] },
+    { name: "Zaporizhzhia", coords: [34.575, 47.5083] },
+    { name: "South Ukraine", coords: [31.2333, 47.8] },
+    { name: "Rivne", coords: [25.875, 51.325] },
+    { name: "Khmelnytskyi", coords: [26.6333, 50.3] },
+    { name: "Burshtyn", coords: [24.6333, 49.25] },
+  ];
+
+  function handleReplay() {
+    counterRef.current = 0;
     planeRef.current.features[0].geometry.coordinates = originRef.current;
-    droneRef.current.features[0].geometry.coordinates = originRef.current;
+    dronesRef.current.forEach((drone, i) => {
+      drone.features[0].geometry.coordinates = powerPlants[i].coords;
+      mapRef.current.getSource(`drone${i}`).setData(drone);
+    });
     mapRef.current.getSource("plane").setData(planeRef.current);
-    mapRef.current.getSource("drone").setData(droneRef.current);
     animate(0);
     setDisabled(true);
   }
@@ -31,49 +44,56 @@ const MapboxExample = () => {
   function animate() {
     const start =
       planeRouteRef.current.features[0].geometry.coordinates[
-        counter >= steps ? counter - 1 : counter
+        counterRef.current >= steps ? counterRef.current - 1 : counterRef.current
       ];
     const end =
       planeRouteRef.current.features[0].geometry.coordinates[
-        counter >= steps ? counter : counter + 1
+        counterRef.current >= steps ? counterRef.current : counterRef.current + 1
       ];
 
-    const start2 =
-      droneRouteRef.current.features[0].geometry.coordinates[
-        counter >= steps ? counter - 1 : counter
-      ];
-    const end2 =
-      droneRouteRef.current.features[0].geometry.coordinates[
-        counter >= steps ? counter : counter + 1
-      ];
-
-    if (!start || !end || !start2 || !end2) {
+    if (!start || !end) {
       setDisabled(false);
       return;
     }
 
     planeRef.current.features[0].geometry.coordinates =
-      planeRouteRef.current.features[0].geometry.coordinates[counter];
-    droneRef.current.features[0].geometry.coordinates =
-      droneRouteRef.current.features[0].geometry.coordinates[counter];
+      planeRouteRef.current.features[0].geometry.coordinates[counterRef.current];
 
     planeRef.current.features[0].properties.bearing = turf.bearing(
       turf.point(start),
       turf.point(end)
     );
-    droneRef.current.features[0].properties.bearing = turf.bearing(
-      turf.point(start2),
-      turf.point(end2)
-    );
 
     mapRef.current.getSource("plane").setData(planeRef.current);
-    mapRef.current.getSource("drone").setData(droneRef.current);
 
-    if (counter < steps) {
+    // Handle multiple drones
+    dronesRef.current.forEach((drone, i) => {
+      const droneRoute = droneRoutesRef.current[i];
+      const start =
+        droneRoute.features[0].geometry.coordinates[
+          counterRef.current >= steps ? counterRef.current - 1 : counterRef.current
+        ];
+      const end =
+        droneRoute.features[0].geometry.coordinates[
+          counterRef.current >= steps ? counterRef.current : counterRef.current + 1
+        ];
+
+      if (start && end) {
+        drone.features[0].geometry.coordinates =
+          droneRoute.features[0].geometry.coordinates[counterRef.current];
+        drone.features[0].properties.bearing = turf.bearing(
+          turf.point(start),
+          turf.point(end)
+        );
+        mapRef.current.getSource(`drone${i}`).setData(drone);
+      }
+    });
+
+    if (counterRef.current < steps) {
       requestAnimationFrame(animate);
     }
 
-    counter = counter + 1;
+    counterRef.current = counterRef.current + 1;
   }
 
   useEffect(() => {
@@ -92,6 +112,7 @@ const MapboxExample = () => {
     originRef.current = origin;
     const destination = endCoords;
 
+    // Create plane route with arc
     const planeRoute = {
       type: "FeatureCollection",
       features: [
@@ -104,8 +125,18 @@ const MapboxExample = () => {
         },
       ],
     };
+
+    // Calculate arc points for plane route
+    const lineDistance = turf.length(planeRoute.features[0]);
+    const arc = [];
+    for (let i = 0; i < lineDistance; i += lineDistance / steps) {
+      const segment = turf.along(planeRoute.features[0], i);
+      arc.push(segment.geometry.coordinates);
+    }
+    planeRoute.features[0].geometry.coordinates = arc;
     planeRouteRef.current = planeRoute;
 
+    // Create plane point
     const plane = {
       type: "FeatureCollection",
       features: [
@@ -121,62 +152,8 @@ const MapboxExample = () => {
     };
     planeRef.current = plane;
 
-    const drone = {
-      type: "FeatureCollection",
-      features: [
-        {
-          type: "Feature",
-          properties: {},
-          geometry: {
-            type: "Point",
-            coordinates: origin,
-          },
-        },
-      ],
-    };
-    droneRef.current = drone;
-
-    const lineDistance = turf.length(planeRoute.features[0]);
-    const arc = [];
-
-    for (let i = 0; i < lineDistance; i += lineDistance / steps) {
-      const segment = turf.along(planeRoute.features[0], i);
-      arc.push(segment.geometry.coordinates);
-    }
-
-    planeRoute.features[0].geometry.coordinates = arc;
-
-    const origin2 = [36.2304, 50.0055];
-    const destination2 = [
-      (origin[0] + destination[0]) / 2,
-      (origin[1] + destination[1]) / 2,
-    ];
-
-    const droneRoute = {
-      type: "FeatureCollection",
-      features: [
-        {
-          type: "Feature",
-          geometry: {
-            type: "LineString",
-            coordinates: [origin2, destination2],
-          },
-        },
-      ],
-    };
-    droneRouteRef.current = droneRoute;
-
-    const lineDistance2 = turf.length(droneRoute.features[0]);
-    const arc2 = [];
-
-    for (let i = 0; i < lineDistance2; i += lineDistance2 / steps) {
-      const segment = turf.along(droneRoute.features[0], i);
-      arc2.push(segment.geometry.coordinates);
-    }
-
-    droneRoute.features[0].geometry.coordinates = arc2;
-
     mapRef.current.on("load", () => {
+      // Add plane sources and layers first
       mapRef.current.addSource("planeRoute", {
         type: "geojson",
         data: planeRoute,
@@ -187,68 +164,123 @@ const MapboxExample = () => {
         data: plane,
       });
 
-      mapRef.current.addSource("drone", {
-        type: "geojson",
-        data: drone,
+      // Add plane layer
+      mapRef.current.addLayer({
+        id: "plane",
+        source: "plane",
+        type: "symbol",
+        layout: {
+          "icon-image": "airport", // Using a built-in Mapbox icon
+          "icon-size": 1.5,
+          "icon-rotate": ["get", "bearing"],
+          "icon-rotation-alignment": "map",
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+        },
       });
 
-      mapRef.current.addSource("droneRoute", {
-        type: "geojson",
-        data: droneRoute,
-      });
-
+      // Add plane route layer
       mapRef.current.addLayer({
         id: "planeRoute",
         source: "planeRoute",
         type: "line",
         paint: {
           "line-width": 2,
-          "line-color": "#007cbf",
+          "line-color": "#ff0000",
         },
       });
 
-      mapRef.current.addLayer({
-        id: "plane",
-        source: "plane",
-        type: "symbol",
-        layout: {
-          "icon-image": "rocket",
-          "icon-size": 1.2,
-          "icon-rotate": ["get", "bearing"],
-          "icon-rotation-alignment": "map",
-          "icon-allow-overlap": true,
-          "icon-ignore-placement": true,
-        },
+      // Initialize multiple drones and their routes
+      powerPlants.forEach((plant, i) => {
+        // Calculate intercept point (midpoint between plant and plane destination)
+        const destination2 = [
+          (plant.coords[0] + destination[0]) / 2,
+          (plant.coords[1] + destination[1]) / 2,
+        ];
+
+        // Create drone
+        const drone = {
+          type: "FeatureCollection",
+          features: [
+            {
+              type: "Feature",
+              properties: {},
+              geometry: {
+                type: "Point",
+                coordinates: plant.coords,
+              },
+            },
+          ],
+        };
+        dronesRef.current[i] = drone;
+
+        // Create drone route
+        const droneRoute = {
+          type: "FeatureCollection",
+          features: [
+            {
+              type: "Feature",
+              geometry: {
+                type: "LineString",
+                coordinates: [plant.coords, destination2],
+              },
+            },
+          ],
+        };
+
+        // Calculate arc points for smooth animation
+        const lineDistance = turf.length(droneRoute.features[0]);
+        const arc = [];
+        for (let i = 0; i < lineDistance; i += lineDistance / steps) {
+          const segment = turf.along(droneRoute.features[0], i);
+          arc.push(segment.geometry.coordinates);
+        }
+        droneRoute.features[0].geometry.coordinates = arc;
+        droneRoutesRef.current[i] = droneRoute;
       });
 
-      mapRef.current.addLayer({
-        id: "drone",
-        source: "drone",
-        type: "symbol",
-        layout: {
-          "icon-image": "rocket",
-          "icon-size": 1.0,
-          "icon-rotate": ["get", "bearing"],
-          "icon-rotation-alignment": "map",
-          "icon-allow-overlap": true,
-          "icon-ignore-placement": true,
-        },
-        paint: {
-          "icon-color": "#ff0000",
-        },
+      // Add sources and layers for each drone
+      powerPlants.forEach((_, i) => {
+        mapRef.current.addSource(`drone${i}`, {
+          type: "geojson",
+          data: dronesRef.current[i],
+        });
+
+        mapRef.current.addSource(`droneRoute${i}`, {
+          type: "geojson",
+          data: droneRoutesRef.current[i],
+        });
+
+        mapRef.current.addLayer({
+          id: `drone${i}`,
+          source: `drone${i}`,
+          type: "symbol",
+          layout: {
+            "icon-image": "rocket",
+            "icon-size": 1.0,
+            "icon-rotate": ["get", "bearing"],
+            "icon-rotation-alignment": "map",
+            "icon-allow-overlap": true,
+            "icon-ignore-placement": true,
+          },
+          paint: {
+            "icon-color": `#ffffff`,
+          },
+        });
+
+        mapRef.current.addLayer({
+          id: `droneRoute${i}`,
+          source: `droneRoute${i}`,
+          type: "line",
+          paint: {
+            "line-width": 2,
+            // Blue
+            "line-color": "#007cbf",
+          },
+        });
       });
 
-      mapRef.current.addLayer({
-        id: "droneRoute",
-        source: "droneRoute",
-        type: "line",
-        paint: {
-          "line-width": 2,
-          "line-color": "#bf0000",
-        },
-      });
-
-      animate(counter);
+      animate(counterRef.current);
     });
 
     // Cleanup function
@@ -344,7 +376,7 @@ const MapboxExample = () => {
             cursor: "pointer",
             borderRadius: "3px",
           }}
-          onClick={handleClick}
+          onClick={handleReplay}
           id="replay"
         >
           Replay
