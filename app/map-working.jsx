@@ -94,10 +94,90 @@ const MapboxJsWorking = () => {
 
   mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
+  // Update useEffect to initialize and start tracking API drones immediately
+  useEffect(() => {
+    // First set initial positions for all API drones
+    for (let i = 0; i < 5; i++) {
+      const powerPlantIndex = i % powerPlants.length;
+      const initialPosition = powerPlants[powerPlantIndex].coords;
+
+      // Set initial position via API
+      fetch(`/api/set_pos/${i}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          latitude: initialPosition[1],
+          longitude: initialPosition[0],
+          altitude: 100,
+        }),
+      }).catch((error) =>
+        console.error(`Error setting initial position for drone ${i}:`, error)
+      );
+    }
+
+    // Start tracking immediately (removed setIsApiDroneTracking here)
+    startTrackingApiDrones();
+  }, []); // Empty dependency array means this runs once on mount
+
+  // Add new function to handle API drone tracking
+  function startTrackingApiDrones() {
+    const interval = setInterval(() => {
+      // Poll position for each API drone
+      for (let i = 0; i < 5; i++) {
+        fetch(`/api/position/${i}`)
+          .then((response) => response.json())
+          .then((data) => {
+            const newCoords = [data.longitude, data.latitude];
+
+            if (apiDronesRef.current[i]) {
+              // Update drone position
+              apiDronesRef.current[i].features[0].geometry.coordinates =
+                newCoords;
+
+              // Get current coordinates array
+              const coordinates =
+                apiDroneRoutesRef.current[i].features[0].geometry.coordinates;
+
+              // Add new coordinates to the array
+              coordinates.push(newCoords);
+
+              // Limit the trail length
+              if (coordinates.length > 1000) {
+                coordinates.shift();
+              }
+
+              // Calculate bearing if we have previous coordinates
+              if (coordinates.length > 1) {
+                const prevCoords = coordinates[coordinates.length - 2];
+                apiDronesRef.current[i].features[0].properties.bearing =
+                  turf.bearing(turf.point(prevCoords), turf.point(newCoords));
+              }
+
+              // Update both the drone and its route on the map
+              mapRef.current
+                .getSource(`apiDrone${i}`)
+                .setData(apiDronesRef.current[i]);
+
+              mapRef.current
+                .getSource(`apiDroneRoute${i}`)
+                .setData(apiDroneRoutesRef.current[i]);
+            }
+          })
+          .catch((error) =>
+            console.error(`Error fetching position for drone ${i}:`, error)
+          );
+      }
+    }, 200);
+
+    setFetchInterval(interval);
+  }
+
+  // Update handleStart to include intercepting
   function handleStart() {
     planeStartedRef.current = true;
     setPlaneStarted(true);
-    setIsApiDroneTracking(true);
 
     // Show the plane route
     mapRef.current.setLayoutProperty("planeRoute", "visibility", "visible");
@@ -109,6 +189,11 @@ const MapboxJsWorking = () => {
 
     // Reset counter
     counterRef.current = 0;
+
+    // Start intercepting with all API drones
+    for (let i = 0; i < 5; i++) {
+      handleIntercept(i);
+    }
   }
 
   function handleLaunchDrones() {
@@ -386,17 +471,42 @@ const MapboxJsWorking = () => {
   // Update handleIntercept to take a droneId
   async function handleIntercept(droneId) {
     try {
+      // Get the plane route
+      const planeCoords =
+        planeRouteRef.current.features[0].geometry.coordinates;
+
+      // Find the current position of the API drone
+      const currentDronePosition =
+        apiDronesRef.current[droneId].features[0].geometry.coordinates;
+
+      // Calculate the closest point on the plane's route
+      const closestPoint = turf.nearestPointOnLine(
+        {
+          type: "Feature",
+          geometry: {
+            type: "LineString",
+            coordinates: planeCoords,
+          },
+        },
+        turf.point(currentDronePosition)
+      );
+
+      // Extract coordinates from the closest point
+      const interceptPoint = closestPoint.geometry.coordinates;
+
+      // Send the intercept coordinates to the API
       const response = await fetch(`/api/waypoint/${droneId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          latitude: 51.5,
-          longitude: 36.5,
+          latitude: interceptPoint[1], // Note: GeoJSON is [longitude, latitude]
+          longitude: interceptPoint[0],
           altitude: 100,
         }),
       });
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -743,7 +853,11 @@ const MapboxJsWorking = () => {
 
       // Initialize API-controlled drones
       for (let i = 0; i < 5; i++) {
-        // Create API drone with different initial positions
+        // Get the corresponding power plant position (wrap around if needed)
+        const powerPlantIndex = i % powerPlants.length;
+        const initialPosition = powerPlants[powerPlantIndex].coords;
+
+        // Create API drone with position matching power plants
         const apiDrone = {
           type: "FeatureCollection",
           features: [
@@ -752,12 +866,27 @@ const MapboxJsWorking = () => {
               properties: {},
               geometry: {
                 type: "Point",
-                coordinates: [36.4 + i * 0.1, 50.3], // Spread out initial positions
+                coordinates: initialPosition,
               },
             },
           ],
         };
         apiDronesRef.current[i] = apiDrone;
+
+        // Send initial position to API
+        fetch(`/api/set_pos/${i}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            latitude: initialPosition[1], // Note: GeoJSON is [longitude, latitude]
+            longitude: initialPosition[0],
+            altitude: 100,
+          }),
+        }).catch((error) =>
+          console.error(`Error setting initial position for drone ${i}:`, error)
+        );
 
         // Create API drone route
         const apiDroneRoute = {
@@ -824,67 +953,6 @@ const MapboxJsWorking = () => {
       mapRef.current?.remove();
     };
   }, [startCoords, endCoords]);
-
-  // Update useEffect for API polling to handle multiple drones
-  useEffect(() => {
-    if (isApiDroneTracking) {
-      const interval = setInterval(() => {
-        // Poll position for each API drone
-        for (let i = 0; i < 5; i++) {
-          fetch(`/api/position/${i}`)
-            .then((response) => response.json())
-            .then((data) => {
-              const newCoords = [data.longitude, data.latitude];
-
-              if (apiDronesRef.current[i]) {
-                // Update drone position
-                apiDronesRef.current[i].features[0].geometry.coordinates =
-                  newCoords;
-
-                // Get current coordinates array
-                const coordinates =
-                  apiDroneRoutesRef.current[i].features[0].geometry.coordinates;
-
-                // Add new coordinates to the array
-                coordinates.push(newCoords);
-
-                // Limit the trail length
-                if (coordinates.length > 1000) {
-                  coordinates.shift();
-                }
-
-                // Calculate bearing if we have previous coordinates
-                if (coordinates.length > 1) {
-                  const prevCoords = coordinates[coordinates.length - 2];
-                  apiDronesRef.current[i].features[0].properties.bearing =
-                    turf.bearing(turf.point(prevCoords), turf.point(newCoords));
-                }
-
-                // Update both the drone and its route on the map
-                mapRef.current
-                  .getSource(`apiDrone${i}`)
-                  .setData(apiDronesRef.current[i]);
-
-                mapRef.current
-                  .getSource(`apiDroneRoute${i}`)
-                  .setData(apiDroneRoutesRef.current[i]);
-              }
-            })
-            .catch((error) =>
-              console.error(`Error fetching position for drone ${i}:`, error)
-            );
-        }
-      }, 1000);
-
-      setFetchInterval(interval);
-
-      return () => {
-        if (interval) {
-          clearInterval(interval);
-        }
-      };
-    }
-  }, [isApiDroneTracking]);
 
   return (
     <div className="relative h-screen w-full">
@@ -993,17 +1061,6 @@ const MapboxJsWorking = () => {
             >
               Replay
             </button>
-
-            {/* Add separate intercept buttons for each API drone */}
-            {Array.from({ length: 5 }).map((_, i) => (
-              <button
-                key={i}
-                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition-colors"
-                onClick={() => handleIntercept(i)}
-              >
-                Intercept {i}
-              </button>
-            ))}
           </div>
         </div>
       </div>

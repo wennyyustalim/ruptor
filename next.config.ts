@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
         source: `/api/waypoint/${id}`,
         destination: `http://192.168.0.74:8000/waypoint/${id}`,
       },
+      {
+        source: `/api/set_pos/${id}`,
+        destination: `http://192.168.0.74:8000/set_pos/${id}`,
+      },
     ]);
   },
 };
