@@ -13,7 +13,6 @@ const MapboxExample = () => {
   const planeRouteRef = useRef<GeoJSON.FeatureCollection>(null);
   const dronesRef = useRef<GeoJSON.FeatureCollection[]>([]);
   const droneRoutesRef = useRef<GeoJSON.FeatureCollection[]>([]);
-  const [disabled, setDisabled] = useState(true);
   const steps = 500;
   const counterRef = useRef(0);
   const [startCoords, setStartCoords] = useState([37.6173, 55.7558]);
@@ -38,7 +37,6 @@ const MapboxExample = () => {
     });
     mapRef.current.getSource("plane").setData(planeRef.current);
     animate(0);
-    setDisabled(true);
   }
 
   function animate() {
@@ -54,11 +52,6 @@ const MapboxExample = () => {
           ? counterRef.current
           : counterRef.current + 1
       ];
-
-    if (!start || !end) {
-      setDisabled(false);
-      return;
-    }
 
     planeRef.current.features[0].geometry.coordinates =
       planeRouteRef.current.features[0].geometry.coordinates[
@@ -306,7 +299,7 @@ const MapboxExample = () => {
     });
 
     // Cleanup function
-    return () => mapRef.current.remove();
+    return () => mapRef.current?.remove();
   }, [startCoords, endCoords]);
 
   return (
@@ -387,10 +380,9 @@ const MapboxExample = () => {
         </div>
 
         <button
-          disabled={disabled}
           style={{
-            backgroundColor: disabled ? "#f5f5f5" : "#3386c0",
-            color: disabled ? "#c3c3c3" : "#fff",
+            backgroundColor: "#3386c0",
+            color: "#fff",
             display: "inline-block",
             margin: "0",
             padding: "10px 20px",
