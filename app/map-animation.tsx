@@ -6,8 +6,8 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import * as turf from "@turf/turf";
 
 // Speeds in m/s
-const MULTIPLIER = 5;
-const DRONE_SPEED = 100 * MULTIPLIER;
+const MULTIPLIER = 10;
+const DRONE_SPEED = 45 * MULTIPLIER;
 const PLANE_SPEED = 280 * MULTIPLIER;
 
 const MapboxExample = () => {
@@ -365,12 +365,14 @@ const MapboxExample = () => {
 
       // Initialize multiple drones and their routes
       powerPlants.forEach((plant, i) => {
-        // Calculate interception time based on distances and speeds
-        const interceptPoint = Math.floor(
-          (stepsRef.current * (i + 1)) / (powerPlants.length + 1)
+        // Find closest point on plane route to this power plant
+        const closestPoint = turf.nearestPointOnLine(
+          planeRoute.features[0],
+          turf.point(plant.coords)
         );
-        const destination2 =
-          planeRoute.features[0].geometry.coordinates[interceptPoint];
+
+        // Get the coordinates of the closest point
+        const destination2 = closestPoint.geometry.coordinates;
 
         // Create drone
         const drone = {
