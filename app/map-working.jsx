@@ -10,6 +10,33 @@ const MULTIPLIER = 50;
 const DRONE_SPEED = 45 * MULTIPLIER;
 const PLANE_SPEED = 280 * MULTIPLIER;
 
+const EMPTY_ROUTE = {
+  type: "FeatureCollection",
+  features: [
+    {
+      type: "Feature",
+      geometry: {
+        type: "LineString",
+        coordinates: [],
+      },
+    },
+  ],
+};
+
+const EMPTY_POINT = {
+  type: "FeatureCollection",
+  features: [
+    {
+      type: "Feature",
+      properties: {},
+      geometry: {
+        type: "Point",
+        coordinates: [0, 0],
+      },
+    },
+  ],
+};
+
 const MapboxJsWorking = () => {
   const num_drones = 4;
   const mapContainerRef = useRef(null);
@@ -58,18 +85,82 @@ const MapboxJsWorking = () => {
   mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
   function handleStart() {
+    const origin = startCoords;
+    const destination = endCoords;
+    originRef.current = origin;
+
+    // Calculate plane route
+    const planeDistance = turf.distance(
+      turf.point(origin),
+      turf.point(destination),
+      { units: "kilometers" }
+    ) * 1000;
+    
+    const planeTime = planeDistance / PLANE_SPEED;
+    stepsRef.current = Math.ceil(planeTime * 60);
+
+    // Create and calculate arc points
+    const arc = [];
+    for (let i = 0; i <= stepsRef.current; i++) {
+      const segment = turf.along(
+        {
+          type: "Feature",
+          geometry: {
+            type: "LineString",
+            coordinates: [origin, destination],
+          },
+        },
+        (planeDistance * i) / stepsRef.current,
+        { units: "meters" }
+      );
+      arc.push(segment.geometry.coordinates);
+    }
+
+    // Update plane route
+    planeRouteRef.current = {
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          geometry: {
+            type: "LineString",
+            coordinates: arc,
+          },
+        },
+      ],
+    };
+
+    // Update plane position
+    planeRef.current = {
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          properties: {},
+          geometry: {
+            type: "Point",
+            coordinates: origin,
+          },
+        },
+      ],
+    };
+
+    // Calculate drone intercept routes
+    powerPlants.forEach((plant, i) => {
+      const closestPoint = turf.nearestPointOnLine(
+        planeRouteRef.current.features[0],
+        turf.point(plant.coords)
+      );
+      // ... rest of drone route calculations ...
+    });
+
+    // Update sources
+    mapRef.current.getSource("planeRoute").setData(planeRouteRef.current);
+    mapRef.current.getSource("plane").setData(planeRef.current);
+    mapRef.current.setLayoutProperty("planeRoute", "visibility", "visible");
+
     planeStartedRef.current = true;
     setPlaneStarted(true);
-    
-    // Show the plane route
-    mapRef.current.setLayoutProperty("planeRoute", "visibility", "visible");
-    mapRef.current.getSource("planeRoute").setData(planeRouteRef.current);
-    
-    // Reset plane to starting position
-    planeRef.current.features[0].geometry.coordinates = originRef.current;
-    mapRef.current.getSource("plane").setData(planeRef.current);
-    
-    // Reset counter
     counterRef.current = 0;
   }
 
@@ -380,15 +471,38 @@ const MapboxJsWorking = () => {
     planeRef.current = plane;
 
     mapRef.current.on("load", () => {
-      // Add plane sources and layers first
+      // Initialize with empty data
       mapRef.current.addSource("planeRoute", {
         type: "geojson",
-        data: planeRoute,
+        data: EMPTY_ROUTE,
       });
 
       mapRef.current.addSource("plane", {
         type: "geojson",
-        data: plane,
+        data: EMPTY_POINT,
+      });
+
+      // Initialize drone sources with their starting positions only
+      powerPlants.forEach((plant, i) => {
+        const drone = {
+          type: "FeatureCollection",
+          features: [
+            {
+              type: "Feature",
+              properties: {},
+              geometry: {
+                type: "Point",
+                coordinates: plant.coords,
+              },
+            },
+          ],
+        };
+        dronesRef.current[i] = drone;
+
+        // Initialize drone route with empty data
+        droneRoutesRef.current[i] = EMPTY_ROUTE;
+        
+        // ... rest of drone initialization ...
       });
 
       // Add plane layer
