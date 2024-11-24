@@ -106,3 +106,4 @@ Connor Geiman - [@connorgeiman](https://github.com/connorgeiman)
 
 Project Link: [https://github.com/wennyyustalim/ruptor](https://github.com/wennyyustalim/ruptor)
 Demo: [Ruptor App](https://interruptor.vercel.app/)
+Demo Video: [YouTube](https://youtu.be/7ceBnX0v0qw)
