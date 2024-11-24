@@ -105,7 +105,6 @@ const MapboxExample = () => {
     mapRef.current = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/dark-v11",
-      // style: "mapbox://styles/mapbox/satellite-v9",
       center: [30, 50],
       zoom: 4,
       pitch: 40,
@@ -293,6 +292,22 @@ const MapboxExample = () => {
             "line-color": "#007cbf",
           },
         });
+      });
+
+      // Add this new code to show country borders
+      mapRef.current.addLayer({
+        'id': 'country-boundaries',
+        'source': {
+          'type': 'vector',
+          'url': 'mapbox://mapbox.country-boundaries-v1'
+        },
+        'source-layer': 'country_boundaries',
+        'type': 'line',
+        'paint': {
+          'line-color': '#627BC1',
+          'line-width': 1,
+          'line-opacity': 0.7
+        }
       });
 
       animate(counterRef.current);
