@@ -66,7 +66,6 @@ const MapAnimationIntegrated = () => {
         ],
       }))
   );
-  const [fetchInterval, setFetchInterval] = useState(null);
 
   // Replace the powerPlants array with this:
   const powerPlants = Array.from({ length: num_drones }, (_, i) => {
@@ -165,8 +164,6 @@ const MapAnimationIntegrated = () => {
           );
       }
     }, REFRESH_RATE);
-
-    setFetchInterval(interval);
   }
 
   // Update handleStart to include intercepting

@@ -97,6 +97,9 @@ const MapboxJsWorking = () => {
   const [clickedPoint, setClickedPoint] = useState(null);
   const [clickedPosition, setClickedPosition] = useState(null);
 
+  // Add new state for API drone visibility
+  const [apiDronesVisible, setApiDronesVisible] = useState(true);
+
   // Replace the powerPlants array with this:
   const powerPlants = Array.from({ length: num_drones }, (_, i) => {
     const radius = 0.18; // approximately 20km in degrees
@@ -635,6 +638,26 @@ const MapboxJsWorking = () => {
     }
   }
 
+  // Add new function to toggle API drone visibility
+  function toggleApiDrones() {
+    setApiDronesVisible(!apiDronesVisible);
+
+    // Toggle visibility of all API drone layers
+    for (let i = 0; i < 5; i++) {
+      const visibility = !apiDronesVisible ? "visible" : "none";
+      mapRef.current.setLayoutProperty(
+        `apiDrone${i}`,
+        "visibility",
+        visibility
+      );
+      mapRef.current.setLayoutProperty(
+        `apiDroneRoute${i}`,
+        "visibility",
+        visibility
+      );
+    }
+  }
+
   useEffect(() => {
     mapRef.current = new mapboxgl.Map({
       container: mapContainerRef.current,
@@ -1161,6 +1184,18 @@ const MapboxJsWorking = () => {
               onClick={handleReplay}
             >
               Replay
+            </button>
+
+            {/* Add new toggle button */}
+            <button
+              className={`${
+                apiDronesVisible
+                  ? "bg-green-500 hover:bg-green-600"
+                  : "bg-red-500 hover:bg-red-600"
+              } text-white px-4 py-2 rounded transition-colors`}
+              onClick={toggleApiDrones}
+            >
+              {apiDronesVisible ? "Hide API Drones" : "Show API Drones"}
             </button>
           </div>
         </div>
