@@ -96,9 +96,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Turf.js for geospatial calculations
 - The open-source community for various supporting libraries
 
-## Contact
+## Contributors
 
-Your Name - [@yourusername](https://twitter.com/yourusername)
+Wenny Yustalim - [@wennyyustalim](https://github.com/wennyyustalim)
+Chris May - [@randomness57](https://github.com/randomness57)
+Mantas Gribulis - [@mantyni](https://github.com/mantyni)
+Yehor Balytskyi - [@turbofakesmile](https://github.com/turbofakesmile)
+Connor Geiman - [@connorgeiman](https://github.com/connorgeiman)
 
 Project Link: [https://github.com/wennyyustalim/ruptor](https://github.com/wennyyustalim/ruptor)
 Demo: [Ruptor App](https://interruptor.vercel.app/)
