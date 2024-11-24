@@ -1,10 +1,10 @@
 import React from "react";
-import MapboxExample from "./map-animation";
+import Mapbox from "./map-animation";
 
 export default function Home() {
   return (
     <div className="min-h-screen">
-      <MapboxExample />
+      <Mapbox />
     </div>
   );
 }

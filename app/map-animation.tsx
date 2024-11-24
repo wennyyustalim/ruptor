@@ -10,7 +10,7 @@ const MULTIPLIER = 10;
 const DRONE_SPEED = 45 * MULTIPLIER;
 const PLANE_SPEED = 280 * MULTIPLIER;
 
-const MapboxExample = () => {
+const Mapbox = () => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const originRef = useRef<[number, number]>(null);
@@ -640,4 +640,4 @@ const MapboxExample = () => {
   );
 };
 
-export default MapboxExample;
+export default Mapbox;
