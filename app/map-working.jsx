@@ -6,7 +6,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import * as turf from "@turf/turf";
 
 // Speeds in m/s
-const MULTIPLIER = 50;
+const MULTIPLIER = 30;
 const DRONE_SPEED = 45 * MULTIPLIER;
 const PLANE_SPEED = 280 * MULTIPLIER;
 const REFRESH_RATE = 200;
@@ -46,11 +46,8 @@ const MapboxJsWorking = () => {
   const [startCoords, setStartCoords] = useState([36.5683, 50.5977]);
   // Kharkiv
   const [endCoords, setEndCoords] = useState([36.296784, 49.995023]);
-  const [isStarted, setIsStarted] = useState(false);
-  const circleAnimationRef = useRef(null);
   const [droneHits, setDroneHits] = useState(0);
   const [planeStarted, setPlaneStarted] = useState(false);
-  const [dronesLaunched, setDronesLaunched] = useState(false);
   // Add new refs for the API-controlled drone
   const apiDronesRef = useRef(Array(5).fill(null));
   const apiDroneRoutesRef = useRef(
@@ -69,9 +66,6 @@ const MapboxJsWorking = () => {
         ],
       }))
   );
-  const apiDroneHistoriesRef = useRef(Array(5).fill([]));
-  const [isApiDroneTracking, setIsApiDroneTracking] = useState(false);
-  // Add new state for controlling the interval
   const [fetchInterval, setFetchInterval] = useState(null);
 
   // Replace the powerPlants array with this:
@@ -199,7 +193,6 @@ const MapboxJsWorking = () => {
 
   function handleLaunchDrones() {
     dronesLaunchedRef.current = true;
-    setDronesLaunched(true);
     droneLaunchCounterRef.current = counterRef.current;
 
     // Calculate new intercept paths from current positions
@@ -393,8 +386,6 @@ const MapboxJsWorking = () => {
     planeStartedRef.current = false;
     dronesLaunchedRef.current = false;
     setPlaneStarted(false);
-    setDronesLaunched(false);
-    setIsApiDroneTracking(false);
     counterRef.current = 0;
 
     // Clear drone histories
