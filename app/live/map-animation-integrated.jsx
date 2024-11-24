@@ -117,7 +117,7 @@ const MapAnimationIntegrated = () => {
 
   // Add new function to handle API drone tracking
   function startTrackingApiDrones() {
-    const interval = setInterval(() => {
+    setInterval(() => {
       // Poll position for each API drone
       for (let i = 0; i < 5; i++) {
         fetch(`/api/position/${i}`)
@@ -195,9 +195,6 @@ const MapAnimationIntegrated = () => {
     // Calculate new intercept paths from current positions
     dronesRef.current.forEach((drone, i) => {
       const currentPosition = drone.features[0].geometry.coordinates;
-
-      // Find current plane position
-      const planePosition = planeRef.current.features[0].geometry.coordinates;
 
       // Calculate remaining plane route from current position
       const remainingPlaneRoute =

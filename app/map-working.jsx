@@ -70,9 +70,9 @@ const MapboxJsWorking = () => {
   const dronesLaunchedRef = useRef(false);
   const droneLaunchCounterRef = useRef(0);
   // Belgorod
-  const [startCoords, setStartCoords] = useState([36.5683, 50.5977]);
+  const [startCoords] = useState([36.5683, 50.5977]);
   // Kharkiv
-  const [endCoords, setEndCoords] = useState([36.296784, 49.995023]);
+  const [endCoords] = useState([36.296784, 49.995023]);
   const [droneHits, setDroneHits] = useState(0);
   const [planeStarted, setPlaneStarted] = useState(false);
   // Add new refs for the API-controlled drone
@@ -93,8 +93,6 @@ const MapboxJsWorking = () => {
         ],
       }))
   );
-  const [fetchInterval, setFetchInterval] = useState(null);
-  const [clickedPoint, setClickedPoint] = useState(null);
   const [clickedPosition, setClickedPosition] = useState(null);
 
   // Add new state for API drone visibility
@@ -150,7 +148,7 @@ const MapboxJsWorking = () => {
 
   // Add new function to handle API drone tracking
   function startTrackingApiDrones() {
-    const interval = setInterval(() => {
+    setInterval(() => {
       // Poll position for each API drone
       for (let i = 0; i < 5; i++) {
         fetch(`/api/position/${i}`)
@@ -197,8 +195,6 @@ const MapboxJsWorking = () => {
           );
       }
     }, REFRESH_RATE);
-
-    setFetchInterval(interval);
   }
 
   // Update handleStart to remove immediate API drone interception
@@ -263,12 +259,11 @@ const MapboxJsWorking = () => {
     };
 
     // Calculate drone intercept routes
-    powerPlants.forEach((plant, i) => {
-      const closestPoint = turf.nearestPointOnLine(
+    powerPlants.forEach((plant) => {
+      turf.nearestPointOnLine(
         planeRouteRef.current.features[0],
         turf.point(plant.coords)
       );
-      // ... rest of drone route calculations ...
     });
 
     // Update sources
@@ -302,9 +297,6 @@ const MapboxJsWorking = () => {
     // Calculate new intercept paths from current positions for regular drones
     dronesRef.current.forEach((drone, i) => {
       const currentPosition = drone.features[0].geometry.coordinates;
-
-      // Find current plane position
-      const planePosition = planeRef.current.features[0].geometry.coordinates;
 
       // Calculate remaining plane route from current position
       const remainingPlaneRoute =
@@ -388,7 +380,7 @@ const MapboxJsWorking = () => {
 
         // Check for interceptions with drones
         if (dronesLaunchedRef.current) {
-          dronesRef.current.forEach((drone, i) => {
+          dronesRef.current.forEach((drone) => {
             if (!drone.features[0].properties.hasHit) {
               const dronePos = drone.features[0].geometry.coordinates;
               const distance = turf.distance(
