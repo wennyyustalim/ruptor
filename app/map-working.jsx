@@ -9,6 +9,7 @@ import * as turf from "@turf/turf";
 const MULTIPLIER = 50;
 const DRONE_SPEED = 45 * MULTIPLIER;
 const PLANE_SPEED = 280 * MULTIPLIER;
+const REFRESH_RATE = 200;
 
 // Add this array near the top of your component, after the constants
 const DRONE_COLORS = [
@@ -169,7 +170,7 @@ const MapboxJsWorking = () => {
             console.error(`Error fetching position for drone ${i}:`, error)
           );
       }
-    }, 200);
+    }, REFRESH_RATE);
 
     setFetchInterval(interval);
   }
