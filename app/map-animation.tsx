@@ -24,7 +24,6 @@ const MapboxExample = () => {
   const [startCoords, setStartCoords] = useState([36.5683, 50.5977]);
   // Kharkiv
   const [endCoords, setEndCoords] = useState([36.296784, 49.995023]);
-  const markersRef = useRef<mapboxgl.Marker[]>([]);
   const [isStarted, setIsStarted] = useState(false);
   const circleAnimationRef = useRef<number>();
 
@@ -490,22 +489,6 @@ const MapboxExample = () => {
         },
       });
 
-      // Add markers for each power plant
-      powerPlants.forEach((plant) => {
-        const marker = new mapboxgl.Marker({
-          color: "#007cbf", // Match drone route color
-        })
-          .setLngLat(plant.coords)
-          .setPopup(
-            new mapboxgl.Popup({
-              className: "black-popup", // Add custom class
-            }).setHTML(`<div style="color: black;">${plant.name}</div>`)
-          )
-          .addTo(mapRef.current);
-
-        markersRef.current.push(marker);
-      });
-
       // Start with circling animation instead of main animation
       animateCircling();
     });
@@ -515,7 +498,6 @@ const MapboxExample = () => {
       if (circleAnimationRef.current) {
         cancelAnimationFrame(circleAnimationRef.current);
       }
-      markersRef.current.forEach((marker) => marker.remove());
       mapRef.current?.remove();
     };
   }, [startCoords, endCoords]);
