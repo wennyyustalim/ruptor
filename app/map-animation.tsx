@@ -82,6 +82,7 @@ const MapboxExample = () => {
     mapRef.current = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/dark-v11",
+      // style: "mapbox://styles/mapbox/satellite-v9",
       center: [30, 50],
       zoom: 4,
       pitch: 40,
@@ -91,7 +92,7 @@ const MapboxExample = () => {
     originRef.current = origin;
     const destination = endCoords;
 
-    const route = {
+    const planeRoute = {
       type: "FeatureCollection",
       features: [
         {
@@ -103,7 +104,7 @@ const MapboxExample = () => {
         },
       ],
     };
-    planeRouteRef.current = route;
+    planeRouteRef.current = planeRoute;
 
     const plane = {
       type: "FeatureCollection",
@@ -135,15 +136,15 @@ const MapboxExample = () => {
     };
     droneRef.current = drone;
 
-    const lineDistance = turf.length(route.features[0]);
+    const lineDistance = turf.length(planeRoute.features[0]);
     const arc = [];
 
     for (let i = 0; i < lineDistance; i += lineDistance / steps) {
-      const segment = turf.along(route.features[0], i);
+      const segment = turf.along(planeRoute.features[0], i);
       arc.push(segment.geometry.coordinates);
     }
 
-    route.features[0].geometry.coordinates = arc;
+    planeRoute.features[0].geometry.coordinates = arc;
 
     const origin2 = [36.2304, 50.0055];
     const destination2 = [
@@ -151,7 +152,7 @@ const MapboxExample = () => {
       (origin[1] + destination[1]) / 2,
     ];
 
-    const route2 = {
+    const droneRoute = {
       type: "FeatureCollection",
       features: [
         {
@@ -163,22 +164,22 @@ const MapboxExample = () => {
         },
       ],
     };
-    droneRouteRef.current = route2;
+    droneRouteRef.current = droneRoute;
 
-    const lineDistance2 = turf.length(route2.features[0]);
+    const lineDistance2 = turf.length(droneRoute.features[0]);
     const arc2 = [];
 
     for (let i = 0; i < lineDistance2; i += lineDistance2 / steps) {
-      const segment = turf.along(route2.features[0], i);
+      const segment = turf.along(droneRoute.features[0], i);
       arc2.push(segment.geometry.coordinates);
     }
 
-    route2.features[0].geometry.coordinates = arc2;
+    droneRoute.features[0].geometry.coordinates = arc2;
 
     mapRef.current.on("load", () => {
-      mapRef.current.addSource("route", {
+      mapRef.current.addSource("planeRoute", {
         type: "geojson",
-        data: route,
+        data: planeRoute,
       });
 
       mapRef.current.addSource("plane", {
@@ -191,14 +192,14 @@ const MapboxExample = () => {
         data: drone,
       });
 
-      mapRef.current.addSource("route2", {
+      mapRef.current.addSource("droneRoute", {
         type: "geojson",
-        data: route2,
+        data: droneRoute,
       });
 
       mapRef.current.addLayer({
-        id: "route",
-        source: "route",
+        id: "planeRoute",
+        source: "planeRoute",
         type: "line",
         paint: {
           "line-width": 2,
@@ -238,8 +239,8 @@ const MapboxExample = () => {
       });
 
       mapRef.current.addLayer({
-        id: "route2",
-        source: "route2",
+        id: "droneRoute",
+        source: "droneRoute",
         type: "line",
         paint: {
           "line-width": 2,
