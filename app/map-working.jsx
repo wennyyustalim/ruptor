@@ -10,7 +10,7 @@ const MULTIPLIER = 50;
 const DRONE_SPEED = 45 * MULTIPLIER;
 const PLANE_SPEED = 280 * MULTIPLIER;
 
-const MapboxJsIntegration = () => {
+const MapboxJsWorking = () => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const originRef = useRef(null);
@@ -31,15 +31,12 @@ const MapboxJsIntegration = () => {
   // Add power plant locations
   const powerPlants = [
     { name: "Border Point 1", coords: [36.15, 50.15] },
-    // { name: "Border Point 2", coords: [36.25, 50.1612] },
-    // { name: "Border Point 3", coords: [36.35, 50.1496] },
-    // { name: "Border Point 4", coords: [36.45, 50.1734] },
-    // { name: "Border Point 5", coords: [36.55, 50.1888] },
-    // { name: "Border Point 6", coords: [36.65, 50.151] },
+    { name: "Border Point 2", coords: [36.25, 50.1612] },
+    { name: "Border Point 3", coords: [36.35, 50.1496] },
+    { name: "Border Point 4", coords: [36.45, 50.1734] },
+    { name: "Border Point 5", coords: [36.55, 50.1888] },
+    { name: "Border Point 6", coords: [36.65, 50.151] },
   ];
-
-  // Add new state for API coordinates
-  const [apiCoordinates, setApiCoordinates] = useState(null);
 
   mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
@@ -247,181 +244,91 @@ const MapboxJsIntegration = () => {
 
     // Handle drone trails (always continue)
     dronesRef.current.forEach((drone, i) => {
-      // Special handling for first drone (index 0) to use API coordinates
-      if (i === 0 && apiCoordinates) {
-        // Update drone position to API coordinates
-        drone.features[0].geometry.coordinates = apiCoordinates;
+      const droneRoute = droneRoutesRef.current[i];
+      const start =
+        droneRoute.features[0].geometry.coordinates[
+          counterRef.current >= stepsRef.current
+            ? counterRef.current - 1
+            : counterRef.current
+        ];
+      const end =
+        droneRoute.features[0].geometry.coordinates[
+          counterRef.current >= stepsRef.current
+            ? counterRef.current
+            : counterRef.current + 1
+        ];
 
-        // Calculate bearing based on previous and current position
-        const prevPosition =
-          droneRoutesRef.current[0].features[0].geometry.coordinates[
-            Math.max(0, counterRef.current - 1)
-          ];
+      if (start && end) {
+        drone.features[0].geometry.coordinates =
+          droneRoute.features[0].geometry.coordinates[counterRef.current];
         drone.features[0].properties.bearing = turf.bearing(
-          turf.point(prevPosition),
-          turf.point(apiCoordinates)
+          turf.point(start),
+          turf.point(end)
         );
+
+        // Add distance calculation for each drone
+        const droneDestination =
+          droneRoutesRef.current[i].features[0].geometry.coordinates[
+            droneRoutesRef.current[i].features[0].geometry.coordinates.length -
+              1
+          ];
+        const remainingDistance = turf
+          .distance(
+            turf.point(drone.features[0].geometry.coordinates),
+            turf.point(droneDestination),
+            { units: "kilometers" }
+          )
+          .toFixed(1);
+
+        drone.features[0].properties.distance = `${remainingDistance}km`;
 
         // Update drone trail
         const droneTrail = {
           type: "Feature",
           geometry: {
             type: "LineString",
-            coordinates: [
-              ...droneRoutesRef.current[0].features[0].geometry.coordinates.slice(
-                0,
-                counterRef.current
-              ),
-              apiCoordinates,
-            ],
+            coordinates: droneRoute.features[0].geometry.coordinates.slice(
+              0,
+              counterRef.current + 1
+            ),
           },
         };
-        mapRef.current.getSource(`droneRoute0`).setData({
+        mapRef.current.getSource(`droneRoute${i}`).setData({
           type: "FeatureCollection",
           features: [droneTrail],
         });
-        mapRef.current.getSource(`drone0`).setData(drone);
+        mapRef.current.getSource(`drone${i}`).setData(drone);
 
         // Update the radius position
-        mapRef.current.getSource(`droneRadius0`).setData({
+        mapRef.current.getSource(`droneRadius${i}`).setData({
           type: "Feature",
           geometry: {
             type: "Point",
-            coordinates: apiCoordinates,
+            coordinates: drone.features[0].geometry.coordinates,
           },
         });
-      } else if (i > 0) {
-        // Original animation logic for other drones
-        const droneRoute = droneRoutesRef.current[i];
-        const start =
-          droneRoute.features[0].geometry.coordinates[
-            counterRef.current >= stepsRef.current
-              ? counterRef.current - 1
-              : counterRef.current
-          ];
-        const end =
-          droneRoute.features[0].geometry.coordinates[
-            counterRef.current >= stepsRef.current
-              ? counterRef.current
-              : counterRef.current + 1
-          ];
 
-        if (start && end) {
-          drone.features[0].geometry.coordinates =
-            droneRoute.features[0].geometry.coordinates[counterRef.current];
-          drone.features[0].properties.bearing = turf.bearing(
-            turf.point(start),
-            turf.point(end)
-          );
+        // Add collision detection
+        const dronePosition = drone.features[0].geometry.coordinates;
+        const planePosition = planeRef.current.features[0].geometry.coordinates;
+        const distance = turf.distance(
+          turf.point(dronePosition),
+          turf.point(planePosition),
+          { units: "kilometers" }
+        );
 
-          // Add distance calculation for each drone
-          const droneDestination =
-            droneRoutesRef.current[i].features[0].geometry.coordinates[
-              droneRoutesRef.current[i].features[0].geometry.coordinates
-                .length - 1
-            ];
-          const remainingDistance = turf
-            .distance(
-              turf.point(drone.features[0].geometry.coordinates),
-              turf.point(droneDestination),
-              { units: "kilometers" }
-            )
-            .toFixed(1);
-
-          drone.features[0].properties.distance = `${remainingDistance}km`;
-
-          // Update drone trail
-          const droneTrail = {
-            type: "Feature",
-            geometry: {
-              type: "LineString",
-              coordinates: droneRoute.features[0].geometry.coordinates.slice(
-                0,
-                counterRef.current + 1
-              ),
-            },
-          };
-          mapRef.current.getSource(`droneRoute${i}`).setData({
-            type: "FeatureCollection",
-            features: [droneTrail],
-          });
-          mapRef.current.getSource(`drone${i}`).setData(drone);
-
-          // Update the radius position
-          mapRef.current.getSource(`droneRadius${i}`).setData({
-            type: "Feature",
-            geometry: {
-              type: "Point",
-              coordinates: drone.features[0].geometry.coordinates,
-            },
-          });
-
-          // Add collision detection
-          const dronePosition = drone.features[0].geometry.coordinates;
-          const planePosition =
-            planeRef.current.features[0].geometry.coordinates;
-          const distance = turf.distance(
-            turf.point(dronePosition),
-            turf.point(planePosition),
-            { units: "kilometers" }
-          );
-
-          // Check if drone is within 0.1km of plane and hasn't already been counted
-          if (distance < 0.1 && !drone.features[0].properties.hasHit) {
-            drone.features[0].properties.hasHit = true;
-            setDroneHits((prev) => prev + 1);
-          }
+        // Check if drone is within 0.1km of plane and hasn't already been counted
+        if (distance < 0.1 && !drone.features[0].properties.hasHit) {
+          drone.features[0].properties.hasHit = true;
+          setDroneHits((prev) => prev + 1);
         }
       }
     });
 
-    // Continue animation
+    // Always continue the animation
     requestAnimationFrame(animate);
     counterRef.current = counterRef.current + 1;
   }
-
-  // Add useEffect for API polling
-  useEffect(() => {
-    const fetchPosition = async () => {
-      try {
-        const response = await fetch("/api/position", {
-          headers: {
-            Accept: "application/json",
-          },
-        });
-        const data = await response.json();
-        // Convert the x,y coordinates to the appropriate format for your map
-        // You may need to adjust this conversion based on your coordinate system
-        setApiCoordinates([data.x, data.y]);
-
-        // Update first drone's position if it exists
-        if (dronesRef.current[0]) {
-          dronesRef.current[0].features[0].geometry.coordinates = [
-            data.x,
-            data.y,
-          ];
-          mapRef.current?.getSource("drone0")?.setData(dronesRef.current[0]);
-
-          // Update the radius position for the first drone
-          mapRef.current?.getSource("droneRadius0")?.setData({
-            type: "Feature",
-            geometry: {
-              type: "Point",
-              coordinates: [data.x, data.y],
-            },
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching position:", error);
-      }
-    };
-
-    // Set up the interval
-    const intervalId = setInterval(fetchPosition, 1000);
-
-    // Cleanup
-    return () => clearInterval(intervalId);
-  }, []);
 
   useEffect(() => {
     mapRef.current = new mapboxgl.Map({
@@ -832,4 +739,4 @@ const MapboxJsIntegration = () => {
   );
 };
 
-export default MapboxJsIntegration;
+export default MapboxJsWorking;

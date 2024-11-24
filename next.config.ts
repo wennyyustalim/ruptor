@@ -1,7 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  async rewrites() {
+    return [
+      {
+        source: "/api/position",
+        destination: "http://192.168.0.74:8000/position",
+      },
+    ];
+  },
 };
 
 export default nextConfig;
