@@ -131,6 +131,15 @@ const MapboxJs = () => {
         (Math.atan2(Math.cos(time), -Math.sin(time)) * 180) / Math.PI;
 
       mapRef.current.getSource(`drone${i}`).setData(drone);
+
+      // Update the radius position
+      mapRef.current.getSource(`droneRadius${i}`).setData({
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [x, y],
+        },
+      });
     });
 
     // Continue the animation if not started
@@ -201,6 +210,23 @@ const MapboxJs = () => {
       mapRef.current.getSource("plane").setData(planeRef.current);
     }
 
+    // Add distance calculation for plane
+    if (counterRef.current < stepsRef.current) {
+      const currentPlanePosition =
+        planeRef.current.features[0].geometry.coordinates;
+      const planeDestination = endCoords;
+      const remainingDistance = turf
+        .distance(
+          turf.point(currentPlanePosition),
+          turf.point(planeDestination),
+          { units: "kilometers" }
+        )
+        .toFixed(1);
+
+      planeRef.current.features[0].properties.distance = `${remainingDistance}km`;
+      mapRef.current.getSource("plane").setData(planeRef.current);
+    }
+
     // Handle drone trails (always continue)
     dronesRef.current.forEach((drone, i) => {
       const droneRoute = droneRoutesRef.current[i];
@@ -225,6 +251,22 @@ const MapboxJs = () => {
           turf.point(end)
         );
 
+        // Add distance calculation for each drone
+        const droneDestination =
+          droneRoutesRef.current[i].features[0].geometry.coordinates[
+            droneRoutesRef.current[i].features[0].geometry.coordinates.length -
+              1
+          ];
+        const remainingDistance = turf
+          .distance(
+            turf.point(drone.features[0].geometry.coordinates),
+            turf.point(droneDestination),
+            { units: "kilometers" }
+          )
+          .toFixed(1);
+
+        drone.features[0].properties.distance = `${remainingDistance}km`;
+
         // Update drone trail
         const droneTrail = {
           type: "Feature",
@@ -241,6 +283,15 @@ const MapboxJs = () => {
           features: [droneTrail],
         });
         mapRef.current.getSource(`drone${i}`).setData(drone);
+
+        // Update the radius position
+        mapRef.current.getSource(`droneRadius${i}`).setData({
+          type: "Feature",
+          geometry: {
+            type: "Point",
+            coordinates: drone.features[0].geometry.coordinates,
+          },
+        });
       }
     });
 
@@ -339,6 +390,16 @@ const MapboxJs = () => {
           "icon-rotation-alignment": "map",
           "icon-allow-overlap": true,
           "icon-ignore-placement": true,
+          // Add text field for distance
+          "text-field": ["get", "distance"],
+          "text-offset": [0, 1.5],
+          "text-anchor": "top",
+          "text-size": 12,
+        },
+        paint: {
+          "text-color": "#ffffff",
+          "text-halo-color": "#000000",
+          "text-halo-width": 1,
         },
       });
 
@@ -422,6 +483,39 @@ const MapboxJs = () => {
 
         droneRoute.features[0].geometry.coordinates = arc;
         droneRoutesRef.current[i] = droneRoute;
+
+        // Add a new source for the drone's radius
+        mapRef.current.addSource(`droneRadius${i}`, {
+          type: "geojson",
+          data: {
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates:
+                dronesRef.current[i].features[0].geometry.coordinates,
+            },
+          },
+        });
+
+        // Add the glowing circle layer
+        mapRef.current.addLayer({
+          id: `droneRadius${i}`,
+          source: `droneRadius${i}`,
+          type: "circle",
+          paint: {
+            "circle-radius": {
+              stops: [
+                [0, 0],
+                [8, 10], // Adjust these values to control the circle size at different zoom levels
+                [12, 30],
+                [15, 50],
+              ],
+            },
+            "circle-color": "#ff0000",
+            "circle-opacity": 0.15,
+            "circle-blur": 0.5,
+          },
+        });
       });
 
       // Add sources and layers for each drone
@@ -447,9 +541,17 @@ const MapboxJs = () => {
             "icon-rotation-alignment": "map",
             "icon-allow-overlap": true,
             "icon-ignore-placement": true,
+            // Add text field for distance
+            "text-field": ["get", "distance"],
+            "text-offset": [0, 1],
+            "text-anchor": "top",
+            "text-size": 12,
           },
           paint: {
-            "icon-color": `#ffffff`,
+            "icon-color": "#ffffff",
+            "text-color": "#ffffff",
+            "text-halo-color": "#000000",
+            "text-halo-width": 1,
           },
         });
 
