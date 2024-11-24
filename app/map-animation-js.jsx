@@ -511,8 +511,8 @@ const MapboxJs = () => {
                 [15, 50],
               ],
             },
-            "circle-color": "#ff0000",
-            "circle-opacity": 0.15,
+            "circle-color": "#008000",
+            "circle-opacity": 0.5,
             "circle-blur": 0.5,
           },
         });
