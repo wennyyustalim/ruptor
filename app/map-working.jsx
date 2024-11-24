@@ -136,7 +136,7 @@ const MapboxJsWorking = () => {
         body: JSON.stringify({
           latitude: initialPosition[1],
           longitude: initialPosition[0],
-          altitude: 100,
+          altitude: 0,
         }),
       }).catch((error) =>
         console.error(`Error setting initial position for drone ${i}:`, error)
