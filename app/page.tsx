@@ -1,10 +1,10 @@
 import React from "react";
-import MapboxJsWorking from "./map-working";
+import MapboxJsIntegrated from "./map-animation-integrated";
 
 export default function Home() {
   return (
     <div className="min-h-screen">
-      <MapboxJsWorking />
+      <MapboxJsIntegrated />
     </div>
   );
 }
