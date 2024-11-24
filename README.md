@@ -103,6 +103,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Mantas Gribulis - [@mantyni](https://github.com/mantyni)
 - Yehor Balytskyi - [@turbofakesmile](https://github.com/turbofakesmile)
 - Connor Geiman - [@connorgeiman](https://github.com/connorgeiman)
+- Prachi Sethi - [@prachi1615](https://github.com/prachi1615)
 
 ## Demos
 
