@@ -11,6 +11,7 @@ const DRONE_SPEED = 45 * MULTIPLIER;
 const PLANE_SPEED = 280 * MULTIPLIER;
 
 const MapboxJsWorking = () => {
+  const num_drones = 4;
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const originRef = useRef(null);
@@ -20,6 +21,10 @@ const MapboxJsWorking = () => {
   const droneRoutesRef = useRef([]);
   const stepsRef = useRef(0);
   const counterRef = useRef(0);
+  const droneHistoriesRef = useRef(Array(num_drones).fill().map(() => []));
+  const planeStartedRef = useRef(false);
+  const dronesLaunchedRef = useRef(false);
+  const droneLaunchCounterRef = useRef(0);
   // Belgorod
   const [startCoords, setStartCoords] = useState([36.5683, 50.5977]);
   // Kharkiv
@@ -27,64 +32,81 @@ const MapboxJsWorking = () => {
   const [isStarted, setIsStarted] = useState(false);
   const circleAnimationRef = useRef(null);
   const [droneHits, setDroneHits] = useState(0);
+  const [planeStarted, setPlaneStarted] = useState(false);
+  const [dronesLaunched, setDronesLaunched] = useState(false);
 
-  // Add power plant locations
-  const powerPlants = [
-    { name: "Border Point 1", coords: [36.15, 50.15] },
-    { name: "Border Point 2", coords: [36.25, 50.1612] },
-    { name: "Border Point 3", coords: [36.35, 50.1496] },
-    { name: "Border Point 4", coords: [36.45, 50.1734] },
-    { name: "Border Point 5", coords: [36.55, 50.1888] },
-    { name: "Border Point 6", coords: [36.65, 50.151] },
-  ];
+  // Replace the powerPlants array with this:
+  const powerPlants = Array.from({ length: num_drones }, (_, i) => {
+    const radius = 0.18; // approximately 20km in degrees (doubled from 0.09)
+    // Calculate angle for 120 degrees (2π/3 radians)
+    const angle = Math.PI / 6 + ((2 * Math.PI) / 3) * i / (num_drones - 1);
+    // Kharkiv coordinates: [36.296784, 49.995023]
+    return {
+      name: `Border Point ${i + 1}`,
+      coords: [
+        36.296784 + radius * Math.cos(angle),
+        49.995023 + radius * Math.sin(angle),
+      ],
+    };
+  });
+
+  // Kharkiv coordinates: [36.296784, 49.995023]
+  // Moving 15km north means increasing latitude by ~0.135 degrees (1 degree ≈ 111km)
+  const GROUND_STATION_COORDS = [36.296784, 49.995023 + 0.135];
 
   mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
   function handleStart() {
-    setIsStarted(true);
-    if (circleAnimationRef.current) {
-      cancelAnimationFrame(circleAnimationRef.current);
-    }
-
-    // Show the complete plane route immediately
+    planeStartedRef.current = true;
+    setPlaneStarted(true);
+    
+    // Show the plane route
     mapRef.current.setLayoutProperty("planeRoute", "visibility", "visible");
     mapRef.current.getSource("planeRoute").setData(planeRouteRef.current);
+    
+    // Reset plane to starting position
+    planeRef.current.features[0].geometry.coordinates = originRef.current;
+    mapRef.current.getSource("plane").setData(planeRef.current);
+    
+    // Reset counter
+    counterRef.current = 0;
+  }
 
-    // Reset drone routes to empty initially
-    powerPlants.forEach((_, i) => {
-      mapRef.current.setLayoutProperty(
-        `droneRoute${i}`,
-        "visibility",
-        "visible"
-      );
-      mapRef.current.getSource(`droneRoute${i}`).setData({
-        type: "FeatureCollection",
-        features: [
-          {
-            type: "Feature",
-            geometry: {
-              type: "LineString",
-              coordinates: [],
-            },
-          },
-        ],
-      });
-    });
-
-    // Update the starting points of drone routes to their current positions
+  function handleLaunchDrones() {
+    dronesLaunchedRef.current = true;
+    setDronesLaunched(true);
+    droneLaunchCounterRef.current = counterRef.current;
+    
+    // Calculate new intercept paths from current positions
     dronesRef.current.forEach((drone, i) => {
       const currentPosition = drone.features[0].geometry.coordinates;
-      const droneRoute = droneRoutesRef.current[i];
-      const destination =
-        droneRoute.features[0].geometry.coordinates[
-          droneRoute.features[0].geometry.coordinates.length - 1
-        ];
+      
+      // Find current plane position
+      const planePosition = planeRef.current.features[0].geometry.coordinates;
+      
+      // Calculate remaining plane route from current position
+      const remainingPlaneRoute = planeRouteRef.current.features[0].geometry.coordinates.slice(counterRef.current);
+      
+      // Find closest point on remaining plane route to drone
+      const closestPoint = turf.nearestPointOnLine(
+        {
+          type: "Feature",
+          geometry: {
+            type: "LineString",
+            coordinates: remainingPlaneRoute
+          }
+        },
+        turf.point(currentPosition)
+      );
 
-      // Create new route from current position
-      const droneDistance =
-        turf.distance(turf.point(currentPosition), turf.point(destination), {
-          units: "kilometers",
-        }) * 1000; // Convert to meters
+      // Calculate drone route to intercept point
+      const interceptPoint = closestPoint.geometry.coordinates;
+      const droneDistance = turf.distance(
+        turf.point(currentPosition),
+        turf.point(interceptPoint),
+        { units: "kilometers" }
+      ) * 1000; // Convert to meters
+      
       const droneTime = droneDistance / DRONE_SPEED;
       const droneSteps = Math.ceil(droneTime * 60); // 60 fps animation
 
@@ -95,7 +117,7 @@ const MapboxJsWorking = () => {
             type: "Feature",
             geometry: {
               type: "LineString",
-              coordinates: [currentPosition, destination],
+              coordinates: [currentPosition, interceptPoint],
             },
           },
           (droneDistance * j) / droneSteps,
@@ -104,51 +126,119 @@ const MapboxJsWorking = () => {
         arc.push(segment.geometry.coordinates);
       }
 
-      // Pad the remaining points with the final coordinate
-      while (arc.length <= stepsRef.current) {
-        arc.push(destination);
-      }
-
-      droneRoute.features[0].geometry.coordinates = arc;
-      mapRef.current.getSource(`droneRoute${i}`).setData(droneRoute);
+      // Update drone route
+      droneRoutesRef.current[i].features[0].geometry.coordinates = arc;
+      mapRef.current.getSource(`droneRoute${i}`).setData(droneRoutesRef.current[i]);
+      mapRef.current.setLayoutProperty(`droneRoute${i}`, "visibility", "visible");
     });
-
-    // Start the main animation
-    animate(0);
   }
 
-  function animateCircling() {
-    const speedFactor = 0.2; // Slower rotation speed (smaller number = slower)
-    const time = Date.now() * 0.001 * speedFactor; // Apply speed factor to time
-    const radius = 0.01; // Radius of the circle in degrees
+  function animateCombined() {
+    // Animate plane
+    if (planeStartedRef.current) {
+      const coordinates = planeRouteRef.current.features[0].geometry.coordinates;
+      
+      if (counterRef.current < coordinates.length - 1) {
+        const start = coordinates[counterRef.current];
+        const end = coordinates[counterRef.current + 1];
+        
+        // Update plane position
+        planeRef.current.features[0].geometry.coordinates = start;
+        planeRef.current.features[0].properties.bearing = turf.bearing(
+          turf.point(start),
+          turf.point(end)
+        );
+        mapRef.current.getSource("plane").setData(planeRef.current);
 
-    dronesRef.current.forEach((drone, i) => {
-      const centerPoint = powerPlants[i].coords;
-      // Calculate new position in a circle
-      const x = centerPoint[0] + Math.cos(time) * radius;
-      const y = centerPoint[1] + Math.sin(time) * radius;
-
-      drone.features[0].geometry.coordinates = [x, y];
-      // Update bearing to be tangent to the circle
-      drone.features[0].properties.bearing =
-        (Math.atan2(Math.cos(time), -Math.sin(time)) * 180) / Math.PI;
-
-      mapRef.current.getSource(`drone${i}`).setData(drone);
-
-      // Update the radius position
-      mapRef.current.getSource(`droneRadius${i}`).setData({
-        type: "Feature",
-        geometry: {
-          type: "Point",
-          coordinates: [x, y],
-        },
-      });
-    });
-
-    // Continue the animation if not started
-    if (!isStarted) {
-      circleAnimationRef.current = requestAnimationFrame(animateCircling);
+        // Check if plane is within ground station radius
+        const distance = turf.distance(
+          turf.point(start),
+          turf.point(GROUND_STATION_COORDS),
+          { units: 'kilometers' }
+        );
+        
+        // If plane is within 20km of ground station and drones haven't launched yet
+        if (distance <= 20 && !dronesLaunchedRef.current) {
+          handleLaunchDrones();
+        }
+      }
     }
+
+    // Animate drones
+    if (!dronesLaunchedRef.current) {
+      // Continue circling animation
+      const speedFactor = 0.2;
+      const time = Date.now() * 0.001 * speedFactor;
+      const radius = 0.01;
+      
+      dronesRef.current.forEach((drone, i) => {
+        const centerPoint = powerPlants[i].coords;
+        const x = centerPoint[0] + Math.cos(time) * radius;
+        const y = centerPoint[1] + Math.sin(time) * radius;
+
+        // Update drone position
+        drone.features[0].geometry.coordinates = [x, y];
+        drone.features[0].properties.bearing = (Math.atan2(Math.cos(time), -Math.sin(time)) * 180) / Math.PI;
+        mapRef.current.getSource(`drone${i}`).setData(drone);
+
+        // Update history with longer trail (changed from 100 to 1000)
+        droneHistoriesRef.current[i].push([x, y]);
+        if (droneHistoriesRef.current[i].length > 1000) {
+          droneHistoriesRef.current[i].shift();
+        }
+
+        // Update the drone route to show the history
+        droneRoutesRef.current[i].features[0].geometry.coordinates = droneHistoriesRef.current[i];
+        mapRef.current.getSource(`droneRoute${i}`).setData(droneRoutesRef.current[i]);
+        mapRef.current.setLayoutProperty(`droneRoute${i}`, "visibility", "visible");
+
+        // Update the radius circle
+        mapRef.current.getSource(`droneRadius${i}`).setData({
+          type: "Feature",
+          geometry: {
+            type: "Point",
+            coordinates: [x, y],
+          },
+          properties: {
+            radius: 20000
+          }
+        });
+      });
+    } else {
+      // Animate drones along intercept paths
+      const droneStep = counterRef.current - droneLaunchCounterRef.current; // Calculate steps since launch
+      
+      dronesRef.current.forEach((drone, i) => {
+        const droneRoute = droneRoutesRef.current[i];
+        const coordinates = droneRoute.features[0].geometry.coordinates;
+        
+        if (droneStep < coordinates.length) {
+          const position = coordinates[droneStep];
+          const nextPosition = coordinates[Math.min(droneStep + 1, coordinates.length - 1)];
+          
+          drone.features[0].geometry.coordinates = position;
+          drone.features[0].properties.bearing = turf.bearing(
+            turf.point(position),
+            turf.point(nextPosition)
+          );
+
+          mapRef.current.getSource(`drone${i}`).setData(drone);
+          mapRef.current.getSource(`droneRadius${i}`).setData({
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: position,
+            },
+          });
+        }
+      });
+    }
+
+    // Increment counter and continue animation
+    if (planeStartedRef.current) {
+      counterRef.current++;
+    }
+    requestAnimationFrame(animateCombined);
   }
 
   function handleReplay() {
@@ -157,9 +247,15 @@ const MapboxJsWorking = () => {
       return;
     }
 
-    setIsStarted(false);
+    planeStartedRef.current = false;
+    dronesLaunchedRef.current = false;
+    setPlaneStarted(false);
+    setDronesLaunched(false);
     counterRef.current = 0;
-
+    
+    // Clear drone histories
+    droneHistoriesRef.current = Array(num_drones).fill().map(() => []);
+    
     // Reset plane position but keep the route visible
     planeRef.current.features[0].geometry.coordinates = originRef.current;
     mapRef.current.getSource("plane").setData(planeRef.current);
@@ -196,138 +292,6 @@ const MapboxJsWorking = () => {
     dronesRef.current.forEach((drone) => {
       drone.features[0].properties.hasHit = false;
     });
-  }
-
-  function animate() {
-    const start =
-      planeRouteRef.current.features[0].geometry.coordinates[
-        counterRef.current >= stepsRef.current
-          ? counterRef.current - 1
-          : counterRef.current
-      ];
-    const end =
-      planeRouteRef.current.features[0].geometry.coordinates[
-        counterRef.current >= stepsRef.current
-          ? counterRef.current
-          : counterRef.current + 1
-      ];
-
-    // Update plane position only if not at the end
-    if (counterRef.current < stepsRef.current) {
-      planeRef.current.features[0].geometry.coordinates =
-        planeRouteRef.current.features[0].geometry.coordinates[
-          counterRef.current
-        ];
-      planeRef.current.features[0].properties.bearing = turf.bearing(
-        turf.point(start),
-        turf.point(end)
-      );
-      mapRef.current.getSource("plane").setData(planeRef.current);
-    }
-
-    // Add distance calculation for plane
-    if (counterRef.current < stepsRef.current) {
-      const currentPlanePosition =
-        planeRef.current.features[0].geometry.coordinates;
-      const planeDestination = endCoords;
-      const remainingDistance = turf
-        .distance(
-          turf.point(currentPlanePosition),
-          turf.point(planeDestination),
-          { units: "kilometers" }
-        )
-        .toFixed(1);
-
-      planeRef.current.features[0].properties.distance = `${remainingDistance}km`;
-      mapRef.current.getSource("plane").setData(planeRef.current);
-    }
-
-    // Handle drone trails (always continue)
-    dronesRef.current.forEach((drone, i) => {
-      const droneRoute = droneRoutesRef.current[i];
-      const start =
-        droneRoute.features[0].geometry.coordinates[
-          counterRef.current >= stepsRef.current
-            ? counterRef.current - 1
-            : counterRef.current
-        ];
-      const end =
-        droneRoute.features[0].geometry.coordinates[
-          counterRef.current >= stepsRef.current
-            ? counterRef.current
-            : counterRef.current + 1
-        ];
-
-      if (start && end) {
-        drone.features[0].geometry.coordinates =
-          droneRoute.features[0].geometry.coordinates[counterRef.current];
-        drone.features[0].properties.bearing = turf.bearing(
-          turf.point(start),
-          turf.point(end)
-        );
-
-        // Add distance calculation for each drone
-        const droneDestination =
-          droneRoutesRef.current[i].features[0].geometry.coordinates[
-            droneRoutesRef.current[i].features[0].geometry.coordinates.length -
-              1
-          ];
-        const remainingDistance = turf
-          .distance(
-            turf.point(drone.features[0].geometry.coordinates),
-            turf.point(droneDestination),
-            { units: "kilometers" }
-          )
-          .toFixed(1);
-
-        drone.features[0].properties.distance = `${remainingDistance}km`;
-
-        // Update drone trail
-        const droneTrail = {
-          type: "Feature",
-          geometry: {
-            type: "LineString",
-            coordinates: droneRoute.features[0].geometry.coordinates.slice(
-              0,
-              counterRef.current + 1
-            ),
-          },
-        };
-        mapRef.current.getSource(`droneRoute${i}`).setData({
-          type: "FeatureCollection",
-          features: [droneTrail],
-        });
-        mapRef.current.getSource(`drone${i}`).setData(drone);
-
-        // Update the radius position
-        mapRef.current.getSource(`droneRadius${i}`).setData({
-          type: "Feature",
-          geometry: {
-            type: "Point",
-            coordinates: drone.features[0].geometry.coordinates,
-          },
-        });
-
-        // Add collision detection
-        const dronePosition = drone.features[0].geometry.coordinates;
-        const planePosition = planeRef.current.features[0].geometry.coordinates;
-        const distance = turf.distance(
-          turf.point(dronePosition),
-          turf.point(planePosition),
-          { units: "kilometers" }
-        );
-
-        // Check if drone is within 0.1km of plane and hasn't already been counted
-        if (distance < 0.1 && !drone.features[0].properties.hasHit) {
-          drone.features[0].properties.hasHit = true;
-          setDroneHits((prev) => prev + 1);
-        }
-      }
-    });
-
-    // Always continue the animation
-    requestAnimationFrame(animate);
-    counterRef.current = counterRef.current + 1;
   }
 
   useEffect(() => {
@@ -614,15 +578,63 @@ const MapboxJsWorking = () => {
         },
       });
 
-      // Start with circling animation instead of main animation
-      animateCircling();
+      // Add ground station source
+      mapRef.current.addSource("groundStation", {
+        type: "geojson",
+        data: {
+          type: "Feature",
+          geometry: {
+            type: "Point",
+            coordinates: GROUND_STATION_COORDS
+          }
+        }
+      });
+
+      // Add ground station layer
+      mapRef.current.addLayer({
+        id: "groundStation",
+        source: "groundStation",
+        type: "symbol",
+        layout: {
+          "icon-image": "castle", // or "triangle" or another appropriate icon
+          "icon-size": 1.5,
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+          "text-field": "Ground Station",
+          "text-offset": [0, 1.5],
+          "text-anchor": "top",
+          "text-size": 12
+        },
+        paint: {
+          "text-color": "#ffffff",
+          "text-halo-color": "#000000",
+          "text-halo-width": 1
+        }
+      });
+
+      // Add ground station radius (15km ≈ 0.135 degrees)
+      mapRef.current.addSource("groundStationRadius", {
+        type: "geojson",
+        data: turf.circle(GROUND_STATION_COORDS, 20, { units: 'kilometers' })
+      });
+
+      mapRef.current.addLayer({
+        id: "groundStationRadius",
+        source: "groundStationRadius",
+        type: "fill",
+        paint: {
+          "fill-color": "#800080",
+          "fill-opacity": 0.2
+        }
+      });
+
+      // Start the combined animation immediately
+      animateCombined();
     });
 
     // Update cleanup
     return () => {
-      if (circleAnimationRef.current) {
-        cancelAnimationFrame(circleAnimationRef.current);
-      }
+      cancelAnimationFrame(counterRef.current);
       mapRef.current?.remove();
     };
   }, [startCoords, endCoords]);
@@ -722,9 +734,9 @@ const MapboxJsWorking = () => {
           <button
             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors"
             onClick={handleStart}
-            disabled={isStarted}
+            disabled={planeStarted}
           >
-            Start
+            Launch Plane
           </button>
 
           <button
