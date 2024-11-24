@@ -140,6 +140,11 @@ const MapboxJs = () => {
   }
 
   function handleReplay() {
+    if (!mapRef.current || !mapRef.current.loaded()) {
+      console.warn("Map not yet loaded");
+      return;
+    }
+
     setIsStarted(false);
     counterRef.current = 0;
 
