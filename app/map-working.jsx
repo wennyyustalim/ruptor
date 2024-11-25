@@ -7,11 +7,11 @@ import * as turf from "@turf/turf";
 
 // Speeds in m/s
 const MULTIPLIER = 1;
-const DRONE_SPEED = 45 * MULTIPLIER;
+const DRONE_SPEED = 100 * MULTIPLIER;
 const PLANE_SPEED = 280 * MULTIPLIER;
 const REFRESH_RATE = 200;
 const NUM_API_DRONES = 6;
-const GROUND_STATION_RADIUS = 30;
+const GROUND_STATION_RADIUS = 20;
 
 // Add this array near the top of your component, after the constants
 const DRONE_COLORS = [
